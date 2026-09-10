@@ -1,0 +1,22 @@
+# IMPORTANTE
+# ---------------------------------------------------------------------------
+# Las copias de seguridad que exportas desde Configuración contienen tus
+# movimientos reales: cuánto ganas, en qué gastas y cuánto ahorras.
+# Aunque el repositorio sea privado, eso no debería vivir en GitHub.
+#
+# Guarda esos archivos fuera de esta carpeta.
+
+finanzas-personales-*.json
+*copia-seguridad*.json
+*backup*.json
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# macOS
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
