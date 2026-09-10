@@ -1,0 +1,18 @@
+# Saltos de línea
+# ---------------------------------------------------------------------------
+# Git normaliza los finales de línea al guardar y al descargar. Sin estas
+# reglas, iniciar.cmd puede llegar al otro equipo con saltos estilo Unix y
+# cmd.exe falla al procesar las etiquetas "goto".
+
+* text=auto eol=lf
+
+# Los archivos por lotes de Windows DEBEN conservar CRLF.
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# Marcados explícitamente como texto para que los diffs sean legibles.
+*.html text
+*.css  text
+*.js   text
+*.md   text
+*.json text
