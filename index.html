@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finanzas personales</title>
+<meta name="description" content="Control de ingresos, gastos, presupuesto y ahorro mes a mes.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+<div class="app" id="app">
+
+  <!-- ============ Navegación lateral (desktop / tablet) ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__marca">
+      <span class="sidebar__logo" aria-hidden="true">💰</span>
+      <span class="sidebar__titulo">Finanzas<br>personales</span>
+    </div>
+
+    <nav class="sidebar__nav" aria-label="Navegación principal">
+      <ul id="nav-principal"></ul>
+    </nav>
+
+    <div class="sidebar__pie">
+      <button type="button" class="btn btn--fantasma btn--bloque" data-accion="cambiar-tema">
+        <span aria-hidden="true">🌗</span> <span data-tema-etiqueta>Tema</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ Zona principal ============ -->
+  <div class="principal">
+
+    <header class="cabecera">
+      <div class="cabecera__izq">
+        <h1 class="cabecera__titulo" id="titulo-pantalla">Inicio</h1>
+        <p class="cabecera__sub" id="subtitulo-pantalla"></p>
+      </div>
+
+      <div class="cabecera__der">
+        <div class="selector-mes" id="selector-mes" role="group" aria-label="Selector de mes">
+          <button type="button" class="btn-icono" data-mes="anterior" aria-label="Mes anterior">‹</button>
+          <label class="visualmente-oculto" for="input-mes">Mes consultado</label>
+          <input type="month" id="input-mes" class="selector-mes__input">
+          <button type="button" class="btn-icono" data-mes="siguiente" aria-label="Mes siguiente">›</button>
+        </div>
+        <button type="button" class="btn btn--primario btn--registrar" data-accion="nuevo-movimiento">
+          <span aria-hidden="true">＋</span> Registrar movimiento
+        </button>
+      </div>
+    </header>
+
+    <div class="aviso-mes" id="aviso-mes" hidden>
+      <span id="aviso-mes-texto"></span>
+      <button type="button" class="enlace" data-accion="ir-mes-actual">Ir al mes actual</button>
+    </div>
+
+    <main id="contenido" class="contenido" tabindex="-1">
+      <!-- Las pantallas se renderizan aquí -->
+    </main>
+  </div>
+
+  <!-- ============ Navegación inferior (móvil) ============ -->
+  <nav class="nav-inferior" aria-label="Navegación principal (móvil)">
+    <ul id="nav-inferior"></ul>
+  </nav>
+
+  <button type="button" class="fab" data-accion="nuevo-movimiento" aria-label="Registrar movimiento">＋</button>
+</div>
+
+<!-- Contenedores globales (los diálogos se crean bajo demanda para poder apilarse) -->
+<div id="toasts" class="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
+<div id="anuncios" class="visualmente-oculto" role="status" aria-live="polite"></div>
+
+<noscript>
+  <p style="padding:24px">Esta aplicación necesita JavaScript activado para funcionar.</p>
+</noscript>
+
+<!-- Orden de carga: utilidades → datos → reglas de negocio → componentes → pantallas → app -->
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/dominio.js"></script>
+<script src="js/graficos.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/formularios.js"></script>
+<script src="js/vistas/inicio.js"></script>
+<script src="js/vistas/movimientos.js"></script>
+<script src="js/vistas/presupuesto.js"></script>
+<script src="js/vistas/categorias.js"></script>
+<script src="js/vistas/recurrentes.js"></script>
+<script src="js/vistas/historico.js"></script>
+<script src="js/vistas/comparar.js"></script>
+<script src="js/vistas/alertas.js"></script>
+<script src="js/vistas/configuracion.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pruebas · Finanzas personales</title>
+<link rel="stylesheet" href="css/estilos.css">
+<style>
+  body { padding: 24px; }
+  .r { padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: .9rem; }
+  .pasa { background: var(--exito-suave); color: var(--exito); }
+  .falla { background: var(--error-suave); color: var(--error); font-weight: 700; }
+  #totales { font-size: 1.1rem; font-weight: 700; margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<h1>Pruebas de las reglas de negocio</h1>
+<p class="texto-apagado texto-sm">
+  Verifica el dominio (<code>js/dominio.js</code>) y el almacén (<code>js/store.js</code>) sin tocar la interfaz.
+  Ábrela en el navegador cuando cambies alguna regla.
+</p>
+
+<div id="totales">Ejecutando…</div>
+<div id="resultados"></div>
+
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/dominio.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const U = FP.util;
+  const D = FP.dominio;
+  const S = FP.store;
+  const resultados = [];
+
+  function prueba(nombre, fn) {
+    try { fn(); resultados.push({ ok: true, nombre: nombre }); }
+    catch (e) { resultados.push({ ok: false, nombre: nombre, error: e && e.message ? e.message : String(e) }); }
+  }
+
+  function igual(obtenido, esperado, contexto) {
+    if (obtenido !== esperado) {
+      throw new Error((contexto ? contexto + ': ' : '') +
+        'esperado ' + JSON.stringify(esperado) + ', obtenido ' + JSON.stringify(obtenido));
+    }
+  }
+
+  function cierto(condicion, mensaje) {
+    if (!condicion) throw new Error(mensaje || 'la condición no se cumplió');
+  }
+
+  /* Estado limpio antes de cada prueba que toque datos. */
+  function limpiar() { S.borrarTodo(); }
+  function cat(nombre) {
+    const c = S.state.categorias.find(function (x) { return U.normalizar(x.nombre) === U.normalizar(nombre); });
+    if (!c) throw new Error('no existe la categoría ' + nombre);
+    return c.id;
+  }
+
+  S.cargar();
+  const ACTUAL = U.periodoActual();
+  const MES = ACTUAL + '-';
+
+  /* ================================================ Fechas y periodos == */
+
+  prueba('periodoDe extrae el mes calendario de una fecha', function () {
+    igual(U.periodoDe('2026-09-10'), '2026-09');
+    igual(U.periodoDe('2026-01-31'), '2026-01');
+  });
+
+  prueba('sumarMeses cruza correctamente el cambio de año', function () {
+    igual(U.sumarMeses('2026-01', -1), '2025-12');
+    igual(U.sumarMeses('2026-12', 1), '2027-01');
+    igual(U.sumarMeses('2026-09', -13), '2025-08');
+  });
+
+  prueba('diffMeses mide la distancia entre periodos', function () {
+    igual(U.diffMeses('2026-01', '2026-09'), 8);
+    igual(U.diffMeses('2026-09', '2026-01'), -8);
+  });
+
+  prueba('diasEnMes reconoce febrero y los años bisiestos', function () {
+    igual(U.diasEnMes('2026-02'), 28);
+    igual(U.diasEnMes('2028-02'), 29);
+    igual(U.diasEnMes('2026-04'), 30);
+    igual(U.diasEnMes('2026-12'), 31);
+  });
+
+  prueba('PA-09: un recurrente del día 31 usa el último día válido del mes', function () {
+    igual(U.fechaEnPeriodo('2026-02', 31), '2026-02-28');
+    igual(U.fechaEnPeriodo('2028-02', 31), '2028-02-29');
+    igual(U.fechaEnPeriodo('2026-04', 31), '2026-04-30');
+    igual(U.fechaEnPeriodo('2026-01', 31), '2026-01-31');
+  });
+
+  prueba('esFechaValida rechaza fechas inexistentes', function () {
+    igual(U.esFechaValida('2026-02-30'), false);
+    igual(U.esFechaValida('2026-02-28'), true);
+    igual(U.esFechaValida('holaquetal'), false);
+  });
+
+  /* ============================================================ Dinero == */
+
+  prueba('El campo de monto entiende los separadores de miles', function () {
+    igual(FP.dinero.leer('1.250.000'), 1250000);
+    igual(FP.dinero.leer('1250000'), 1250000);
+    igual(FP.dinero.leer('$4.500.000'), 4500000);
+    igual(FP.dinero.leer('  180000 '), 180000);
+    cierto(isNaN(FP.dinero.leer('')), 'una cadena vacía debe dar NaN');
+    cierto(isNaN(FP.dinero.leer('abc')), 'un texto sin dígitos debe dar NaN');
+  });
+
+  prueba('El formato monetario respeta la configuración de moneda', function () {
+    limpiar();
+    const texto = FP.dinero.formato(1250000);
+    cierto(texto.indexOf('1') >= 0 && texto.indexOf('250') >= 0, 'debe contener las cifras: ' + texto);
+    igual(FP.dinero.formatoConSigno(180000, 'gasto').charAt(0), '-');
+    igual(FP.dinero.formatoConSigno(180000, 'ingreso').charAt(0), '+');
+    igual(FP.dinero.formatoSaldo(-500).charAt(0), '-');
+  });
+
+  /* ==================================================== Resumen del mes == */
+
+  prueba('FR-005: el ahorro real es ingresos menos gastos', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '05', monto: 4500000, tipo: 'ingreso', categoriaId: cat('Salario'), descripcion: 'Salario' });
+    S.crearMovimiento({ fecha: MES + '06', monto: 1000000, tipo: 'gasto', categoriaId: cat('Vivienda'), descripcion: 'Arriendo' });
+    S.crearMovimiento({ fecha: MES + '07', monto: 200000, tipo: 'gasto', categoriaId: cat('Mercado'), descripcion: 'Mercado' });
+
+    const r = D.resumen(ACTUAL);
+    igual(r.ingresos, 4500000, 'ingresos');
+    igual(r.gastos, 1200000, 'gastos');
+    igual(r.ahorroReal, 3300000, 'ahorro real');
+    igual(r.nMovimientos, 3, 'número de movimientos');
+  });
+
+  prueba('FR-004: cada movimiento cuenta solo en el mes de su fecha', function () {
+    limpiar();
+    const anterior = U.sumarMeses(ACTUAL, -1);
+    S.crearMovimiento({ fecha: MES + '10', monto: 100, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: anterior + '-10', monto: 999, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    igual(D.resumen(ACTUAL).gastos, 100, 'mes actual');
+    igual(D.resumen(anterior).gastos, 999, 'mes anterior');
+    igual(D.movimientosDe(ACTUAL).length, 1);
+  });
+
+  prueba('FR-012: el total por categoría suma solo sus movimientos', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '02', monto: 50000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '03', monto: 30000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '04', monto: 70000, tipo: 'gasto', categoriaId: cat('Transporte') });
+
+    const totales = D.totalesPorCategoria(ACTUAL, 'gasto');
+    igual(totales.get(cat('Mercado')), 80000, 'Mercado');
+    igual(totales.get(cat('Transporte')), 70000, 'Transporte');
+  });
+
+  /* ======================================================= Presupuesto == */
+
+  prueba('PA-08: el umbral del 80 % separa "dentro" de "cerca del límite"', function () {
+    limpiar();
+    igual(D.estadoDeTope(0, 1000), 'ok');
+    igual(D.estadoDeTope(799, 1000), 'ok');
+    igual(D.estadoDeTope(800, 1000), 'cerca');
+    igual(D.estadoDeTope(1000, 1000), 'cerca', 'gastar justo el tope no es superarlo');
+    igual(D.estadoDeTope(1001, 1000), 'excedido');
+    igual(D.estadoDeTope(500, null), 'sin-tope');
+  });
+
+  prueba('Gastar exactamente el tope se etiqueta "Tope agotado", no "Cerca"', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Vivienda'), 1000000);
+    S.crearMovimiento({ fecha: MES + '01', monto: 1000000, tipo: 'gasto', categoriaId: cat('Vivienda') });
+
+    const fila = D.estadoTopes(ACTUAL)[0];
+    igual(fila.estado, 'cerca', 'sigue sin estar excedido');
+    igual(fila.agotado, true);
+    igual(fila.etiquetaEstado, 'Tope agotado');
+    igual(fila.disponible, 0);
+
+    const aviso = D.alertas(ACTUAL).find(function (a) { return a.categoriaId === cat('Vivienda'); });
+    cierto(aviso.mensaje.indexOf('agotado') >= 0, 'el mensaje debe decir que el tope se agotó');
+  });
+
+  prueba('El umbral de aviso es configurable', function () {
+    limpiar();
+    S.actualizarConfig({ umbralAviso: 90 });
+    igual(D.estadoDeTope(850, 1000), 'ok', 'con umbral 90 %, el 85 % aún está dentro');
+    igual(D.estadoDeTope(900, 1000), 'cerca');
+    S.actualizarConfig({ umbralAviso: 80 });
+  });
+
+  prueba('FR-016: el disponible es negativo cuando se supera el tope', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Mercado'), 600000);
+    S.crearMovimiento({ fecha: MES + '09', monto: 650000, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const fila = D.estadoTopes(ACTUAL)[0];
+    igual(fila.tope, 600000, 'tope');
+    igual(fila.gastado, 650000, 'gastado');
+    igual(fila.disponible, -50000, 'disponible');
+    igual(fila.estado, 'excedido');
+    igual(fila.etiquetaEstado, 'Tope superado');
+  });
+
+  prueba('Las categorías excedidas se muestran primero', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Transporte'), 300000);   // quedará en 40 % → ok
+    S.definirTope(ACTUAL, cat('Mercado'), 600000);      // quedará excedida
+    S.definirTope(ACTUAL, cat('Servicios'), 300000);    // quedará cerca
+
+    S.crearMovimiento({ fecha: MES + '02', monto: 120000, tipo: 'gasto', categoriaId: cat('Transporte') });
+    S.crearMovimiento({ fecha: MES + '03', monto: 650000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '04', monto: 260000, tipo: 'gasto', categoriaId: cat('Servicios') });
+
+    const filas = D.estadoTopes(ACTUAL);
+    igual(filas[0].estado, 'excedido');
+    igual(filas[1].estado, 'cerca');
+    igual(filas[2].estado, 'ok');
+  });
+
+  prueba('PA-07: una categoría de gasto sin tope se marca "Sin límite definido"', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '05', monto: 90000, tipo: 'gasto', categoriaId: cat('Salud') });
+    const fila = D.estadoTopes(ACTUAL).find(function (f) { return f.categoriaId === cat('Salud'); });
+    igual(fila.estado, 'sin-tope');
+    igual(fila.tope, null);
+    igual(fila.disponible, null);
+  });
+
+  prueba('PA-07: copiar el presupuesto del mes anterior traslada topes y meta', function () {
+    limpiar();
+    const anterior = U.sumarMeses(ACTUAL, -1);
+    S.definirMetaAhorro(anterior, 1000000);
+    S.definirTope(anterior, cat('Mercado'), 600000);
+    S.definirTope(anterior, cat('Transporte'), 200000);
+
+    S.copiarPresupuesto(anterior, ACTUAL);
+    const p = S.presupuesto(ACTUAL);
+    igual(p.metaAhorro, 1000000, 'meta copiada');
+    igual(p.topes.length, 2, 'topes copiados');
+  });
+
+  prueba('PA-13: se detecta el presupuesto imposible de cumplir', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '01', monto: 3000000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.definirTope(ACTUAL, cat('Vivienda'), 2000000);
+    S.definirTope(ACTUAL, cat('Mercado'), 800000);
+    S.definirMetaAhorro(ACTUAL, 1000000);
+
+    const c = D.coherenciaPresupuesto(ACTUAL);
+    igual(c.sumaTopes, 2800000, 'suma de topes');
+    igual(c.comprometido, 3800000, 'topes + meta');
+    igual(c.ingresosPrevistos, 3000000, 'ingresos previstos');
+    igual(c.imposible, true);
+    igual(c.exceso, 800000, 'faltante');
+  });
+
+  prueba('Un presupuesto alcanzable no dispara la advertencia', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '01', monto: 5000000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.definirTope(ACTUAL, cat('Mercado'), 600000);
+    S.definirMetaAhorro(ACTUAL, 1000000);
+    igual(D.coherenciaPresupuesto(ACTUAL).imposible, false);
+  });
+
+  /* ============================================================ Avisos == */
+
+  prueba('FR-019: superar el tope genera aviso de superación', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Mercado'), 600000);
+    S.crearMovimiento({ fecha: MES + '09', monto: 650000, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const avisos = D.alertas(ACTUAL);
+    const superacion = avisos.filter(function (a) { return a.condicion === 'excedido'; });
+    igual(superacion.length, 1);
+    igual(superacion[0].severidad, 'error');
+    cierto(superacion[0].mensaje.indexOf('superado') >= 0, 'el mensaje debe hablar de superación');
+  });
+
+  prueba('PA-08: un gasto que pasa de 0 % a 110 % emite solo el aviso de superación', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Mercado'), 600000);
+    S.crearMovimiento({ fecha: MES + '09', monto: 660000, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const deLaCategoria = D.alertas(ACTUAL).filter(function (a) { return a.categoriaId === cat('Mercado'); });
+    igual(deLaCategoria.length, 1, 'no deben emitirse dos avisos por el mismo evento');
+    igual(deLaCategoria[0].condicion, 'excedido');
+  });
+
+  prueba('FR-018: acercarse al tope genera aviso de cercanía', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Transporte'), 300000);
+    S.crearMovimiento({ fecha: MES + '09', monto: 270000, tipo: 'gasto', categoriaId: cat('Transporte') });
+
+    const avisos = D.alertas(ACTUAL).filter(function (a) { return a.condicion === 'cerca'; });
+    igual(avisos.length, 1);
+    igual(avisos[0].severidad, 'advertencia');
+  });
+
+  prueba('Historia 4, escenario 3: bajar el tope por debajo de lo gastado avisa', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Mercado'), 900000);
+    S.crearMovimiento({ fecha: MES + '09', monto: 650000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    igual(D.alertas(ACTUAL).length, 0, 'con tope holgado no debe haber avisos');
+
+    S.definirTope(ACTUAL, cat('Mercado'), 500000);
+    const avisos = D.alertas(ACTUAL).filter(function (a) { return a.condicion === 'excedido'; });
+    igual(avisos.length, 1, 'al reducir el tope debe avisar de superación');
+  });
+
+  prueba('Un aviso descartado deja de listarse, pero se puede restaurar', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Mercado'), 600000);
+    S.crearMovimiento({ fecha: MES + '09', monto: 650000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    igual(D.alertas(ACTUAL).length, 1);
+
+    S.descartarAviso(ACTUAL, cat('Mercado'), 'excedido');
+    igual(D.alertas(ACTUAL).length, 0, 'descartado');
+    igual(D.alertas(ACTUAL, { incluirDescartados: true }).length, 1, 'sigue existiendo');
+
+    S.restaurarAvisos(ACTUAL);
+    igual(D.alertas(ACTUAL).length, 1, 'restaurado');
+  });
+
+  prueba('FR-021: se avisa cuando la meta de ahorro está en riesgo', function () {
+    limpiar();
+    S.definirMetaAhorro(ACTUAL, 1000000);
+    S.crearMovimiento({ fecha: MES + '01', monto: 2000000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '02', monto: 1500000, tipo: 'gasto', categoriaId: cat('Vivienda') });
+
+    const avisos = D.alertas(ACTUAL).filter(function (a) { return a.condicion === 'meta'; });
+    igual(avisos.length, 1, 'ahorro real 500.000 frente a meta 1.000.000');
+  });
+
+  /* ======================================================= Recurrentes == */
+
+  prueba('FR-023: los recurrentes vigentes generan un movimiento por mes', function () {
+    limpiar();
+    const desde = U.sumarMeses(ACTUAL, -2);
+    S.crearRecurrente({
+      tipo: 'gasto', monto: 1000000, descripcion: 'Arriendo',
+      categoriaId: cat('Vivienda'), diaMes: 1, desde: desde
+    });
+
+    const generados = D.generarRecurrentes();
+    igual(generados.length, 3, 'tres meses: dos anteriores y el actual');
+    igual(D.movimientosDe(ACTUAL).length, 1);
+    igual(D.movimientosDe(desde).length, 1);
+  });
+
+  prueba('No se generan movimientos de meses futuros', function () {
+    limpiar();
+    S.crearRecurrente({
+      tipo: 'ingreso', monto: 100, descripcion: 'Prueba',
+      categoriaId: cat('Salario'), diaMes: 1, desde: ACTUAL
+    });
+    D.generarRecurrentes();
+    igual(D.movimientosDe(U.sumarMeses(ACTUAL, 1)).length, 0);
+  });
+
+  prueba('Ejecutar la generación dos veces no duplica movimientos', function () {
+    limpiar();
+    S.crearRecurrente({
+      tipo: 'gasto', monto: 500000, descripcion: 'Arriendo',
+      categoriaId: cat('Vivienda'), diaMes: 5, desde: ACTUAL
+    });
+    D.generarRecurrentes();
+    const segunda = D.generarRecurrentes();
+    igual(segunda.length, 0, 'la segunda pasada no debe generar nada');
+    igual(D.movimientosDe(ACTUAL).length, 1);
+  });
+
+  prueba('Un movimiento generado que se borra a propósito no reaparece', function () {
+    limpiar();
+    S.crearRecurrente({
+      tipo: 'gasto', monto: 500000, descripcion: 'Arriendo',
+      categoriaId: cat('Vivienda'), diaMes: 5, desde: ACTUAL
+    });
+    const generados = D.generarRecurrentes();
+    S.eliminarMovimiento(generados[0].id);
+    D.generarRecurrentes();
+    igual(D.movimientosDe(ACTUAL).length, 0, 'no debe regenerarse');
+  });
+
+  prueba('FR-025: lo generado cuenta en totales, presupuesto y avisos', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Vivienda'), 800000);
+    S.crearRecurrente({
+      tipo: 'gasto', monto: 1000000, descripcion: 'Arriendo',
+      categoriaId: cat('Vivienda'), diaMes: 1, desde: ACTUAL
+    });
+    D.generarRecurrentes();
+
+    igual(D.resumen(ACTUAL).gastos, 1000000, 'suma en los totales');
+    igual(D.estadoTopes(ACTUAL)[0].estado, 'excedido', 'cuenta contra el tope');
+    igual(D.alertas(ACTUAL).filter(function (a) { return a.condicion === 'excedido'; }).length, 1, 'genera aviso');
+  });
+
+  prueba('Un recurrente de monto variable deja el movimiento por revisar', function () {
+    limpiar();
+    S.crearRecurrente({
+      tipo: 'gasto', monto: 150000, descripcion: 'Energía',
+      categoriaId: cat('Servicios'), diaMes: 8, desde: ACTUAL, montoVariable: true
+    });
+    D.generarRecurrentes();
+    igual(D.pendientesDeRevision(ACTUAL).length, 1);
+  });
+
+  prueba('PA-10: eliminar la regla puede conservar los movimientos generados', function () {
+    limpiar();
+    const rec = S.crearRecurrente({
+      tipo: 'gasto', monto: 300000, descripcion: 'Gimnasio',
+      categoriaId: cat('Salud'), diaMes: 3, desde: ACTUAL
+    });
+    D.generarRecurrentes();
+    igual(D.movimientosDe(ACTUAL).length, 1);
+
+    S.eliminarRecurrente(rec.id, false);
+    igual(D.movimientosDe(ACTUAL).length, 1, 'el histórico se conserva');
+    igual(D.resumen(ACTUAL).gastos, 300000);
+  });
+
+  prueba('PA-10: también se pueden borrar los movimientos generados', function () {
+    limpiar();
+    const rec = S.crearRecurrente({
+      tipo: 'gasto', monto: 300000, descripcion: 'Gimnasio',
+      categoriaId: cat('Salud'), diaMes: 3, desde: ACTUAL
+    });
+    D.generarRecurrentes();
+    S.eliminarRecurrente(rec.id, true);
+    igual(D.movimientosDe(ACTUAL).length, 0);
+  });
+
+  /* ======================================================== Categorías == */
+
+  prueba('PA-06: no se permiten nombres repetidos dentro del mismo tipo', function () {
+    limpiar();
+    igual(S.nombreCategoriaRepetido('Mercado', 'gasto'), true);
+    igual(S.nombreCategoriaRepetido('mercado', 'gasto'), true, 'sin distinguir mayúsculas');
+    igual(S.nombreCategoriaRepetido('Mercádo', 'gasto'), true, 'sin distinguir tildes');
+    igual(S.nombreCategoriaRepetido('Mercado', 'ingreso'), false, 'otro tipo sí puede repetir el nombre');
+  });
+
+  prueba('PA-05: eliminar con reasignación traslada movimientos y topes', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Mercado'), 600000);
+    S.crearMovimiento({ fecha: MES + '05', monto: 200000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    const origen = cat('Mercado');
+    const destino = cat('Otros gastos');
+
+    S.eliminarCategoria(origen, destino);
+
+    igual(S.categoria(origen), null, 'la categoría desaparece');
+    igual(D.totalesPorCategoria(ACTUAL, 'gasto').get(destino), 200000, 'el movimiento se reasignó');
+    const fila = D.estadoTopes(ACTUAL).find(function (f) { return f.categoriaId === destino; });
+    igual(fila.tope, 600000, 'el tope se trasladó');
+    igual(D.resumen(ACTUAL).gastos, 200000, 'los totales del mes no cambian');
+  });
+
+  prueba('usoDeCategoria informa de las dependencias antes de borrar', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '05', monto: 1000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.definirTope(ACTUAL, cat('Mercado'), 5000);
+    const uso = S.usoDeCategoria(cat('Mercado'));
+    igual(uso.movimientos, 1);
+    igual(uso.topes, 1);
+  });
+
+  /* ======================================================== Validación == */
+
+  prueba('FR-003: se rechazan los movimientos incompletos indicando qué falta', function () {
+    limpiar();
+    const sinNada = D.validarMovimiento({});
+    cierto(sinNada.monto, 'debe reclamar el monto');
+    cierto(sinNada.fecha, 'debe reclamar la fecha');
+    cierto(sinNada.categoriaId, 'debe reclamar la categoría');
+
+    igual(D.validarMovimiento({
+      tipo: 'gasto', monto: 0, fecha: MES + '05', categoriaId: cat('Mercado')
+    }).monto, 'Ingresa un monto mayor que cero.');
+
+    const valido = D.validarMovimiento({
+      tipo: 'gasto', monto: 1000, fecha: MES + '05', categoriaId: cat('Mercado'), descripcion: ''
+    });
+    igual(D.hayErrores(valido), false, 'la descripción es opcional por defecto');
+  });
+
+  prueba('El tipo del movimiento y el de la categoría deben coincidir', function () {
+    limpiar();
+    const errores = D.validarMovimiento({
+      tipo: 'ingreso', monto: 1000, fecha: MES + '05', categoriaId: cat('Mercado')
+    });
+    cierto(errores.categoriaId, 'una categoría de gasto no vale para un ingreso');
+  });
+
+  prueba('PA-04: se puede exigir la descripción por configuración', function () {
+    limpiar();
+    S.actualizarConfig({ descripcionObligatoria: true });
+    const errores = D.validarMovimiento({
+      tipo: 'gasto', monto: 1000, fecha: MES + '05', categoriaId: cat('Mercado'), descripcion: '  '
+    });
+    cierto(errores.descripcion, 'debe reclamar la descripción');
+    S.actualizarConfig({ descripcionObligatoria: false });
+  });
+
+  prueba('PA-12: se puede bloquear el registro con fecha futura', function () {
+    limpiar();
+    const manana = new Date(Date.now() + 86400000);
+    const iso = manana.getFullYear() + '-' + U.dos(manana.getMonth() + 1) + '-' + U.dos(manana.getDate());
+
+    S.actualizarConfig({ permitirFechaFutura: false });
+    cierto(D.validarMovimiento({
+      tipo: 'gasto', monto: 1000, fecha: iso, categoriaId: cat('Mercado')
+    }).fecha, 'con la restricción activa debe rechazarla');
+
+    S.actualizarConfig({ permitirFechaFutura: true });
+    igual(D.hayErrores(D.validarMovimiento({
+      tipo: 'gasto', monto: 1000, fecha: iso, categoriaId: cat('Mercado')
+    })), false, 'con la restricción desactivada debe aceptarla');
+  });
+
+  /* ==================================================== Edición y borrado */
+
+  prueba('FR-007: editar un movimiento recalcula los totales', function () {
+    limpiar();
+    const mov = S.crearMovimiento({ fecha: MES + '05', monto: 100000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    igual(D.resumen(ACTUAL).gastos, 100000);
+
+    S.actualizarMovimiento(mov.id, { monto: 250000 });
+    igual(D.resumen(ACTUAL).gastos, 250000, 'nuevo monto');
+
+    S.actualizarMovimiento(mov.id, { tipo: 'ingreso', categoriaId: cat('Salario') });
+    igual(D.resumen(ACTUAL).gastos, 0, 'ya no es gasto');
+    igual(D.resumen(ACTUAL).ingresos, 250000, 'ahora es ingreso');
+  });
+
+  prueba('Mover un movimiento a otro mes traslada su efecto', function () {
+    limpiar();
+    const anterior = U.sumarMeses(ACTUAL, -1);
+    const mov = S.crearMovimiento({ fecha: MES + '05', monto: 80000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.actualizarMovimiento(mov.id, { fecha: anterior + '-15' });
+
+    igual(D.resumen(ACTUAL).gastos, 0);
+    igual(D.resumen(anterior).gastos, 80000);
+  });
+
+  prueba('Eliminar un movimiento se puede deshacer', function () {
+    limpiar();
+    const mov = S.crearMovimiento({ fecha: MES + '05', monto: 80000, tipo: 'gasto', categoriaId: cat('Mercado'), descripcion: 'Mercado' });
+    const deshacer = S.eliminarMovimiento(mov.id);
+    igual(D.resumen(ACTUAL).gastos, 0, 'eliminado');
+
+    deshacer();
+    igual(D.resumen(ACTUAL).gastos, 80000, 'restaurado');
+    igual(D.movimientosDe(ACTUAL)[0].descripcion, 'Mercado', 'con sus datos intactos');
+  });
+
+  /* ========================================================== Histórico == */
+
+  prueba('FR-027: la comparación entre meses calcula variaciones', function () {
+    limpiar();
+    const a = U.sumarMeses(ACTUAL, -1);
+    S.crearMovimiento({ fecha: a + '-05', monto: 4500000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: a + '-06', monto: 3600000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 4500000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '06', monto: 3200000, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const c = D.comparar(a, ACTUAL);
+    const gastos = c.indicadores.find(function (i) { return i.clave === 'gastos'; });
+    igual(gastos.delta, -400000, 'gastó 400.000 menos');
+    igual(gastos.tendencia, 'mejor', 'gastar menos es mejorar');
+
+    const ahorro = c.indicadores.find(function (i) { return i.clave === 'ahorro'; });
+    igual(ahorro.a, 900000);
+    igual(ahorro.b, 1300000);
+    igual(ahorro.tendencia, 'mejor');
+
+    const mercado = c.categorias.find(function (x) { return x.nombre === 'Mercado'; });
+    igual(mercado.delta, -400000);
+  });
+
+  prueba('El histórico solo lista meses con información', function () {
+    limpiar();
+    const a = U.sumarMeses(ACTUAL, -3);
+    S.crearMovimiento({ fecha: a + '-05', monto: 1000, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const periodos = D.periodosConDatos();
+    cierto(periodos.indexOf(a) >= 0, 'incluye el mes con movimientos');
+    cierto(periodos.indexOf(ACTUAL) >= 0, 'siempre incluye el mes actual');
+    cierto(periodos.indexOf(U.sumarMeses(ACTUAL, -2)) < 0, 'no inventa meses vacíos');
+  });
+
+  prueba('El resumen histórico cuenta las categorías excedidas de cada mes', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Mercado'), 100000);
+    S.crearMovimiento({ fecha: MES + '05', monto: 150000, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const fila = D.historico().find(function (r) { return r.periodo === ACTUAL; });
+    igual(fila.excedidas, 1);
+    igual(fila.conTope, 1);
+  });
+
+  /* ================================== Copia de seguridad y persistencia == */
+
+  prueba('Exportar e importar conserva los datos', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '05', monto: 123456, tipo: 'gasto', categoriaId: cat('Mercado'), descripcion: 'Prueba' });
+    S.definirMetaAhorro(ACTUAL, 999000);
+    const copia = S.exportarJSON();
+
+    S.borrarTodo();
+    igual(D.resumen(ACTUAL).gastos, 0, 'tras borrar no queda nada');
+
+    S.importarJSON(copia);
+    igual(D.resumen(ACTUAL).gastos, 123456, 'movimiento restaurado');
+    igual(D.resumen(ACTUAL).metaAhorro, 999000, 'meta restaurada');
+  });
+
+  prueba('Importar un archivo con formato inválido falla de forma controlada', function () {
+    limpiar();
+    let lanzo = false;
+    try { S.importarJSON('{"hola":"mundo"}'); } catch (e) { lanzo = true; }
+    igual(lanzo, true, 'debe rechazar el archivo');
+  });
+
+  prueba('Los datos sobreviven a una recarga del almacén', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '07', monto: 55000, tipo: 'gasto', categoriaId: cat('Transporte') });
+    S.cargar();
+    igual(D.resumen(ACTUAL).gastos, 55000, 'se releyeron desde el almacenamiento');
+  });
+
+  /* ============================================================ Informe == */
+
+  limpiar();
+
+  const cont = document.getElementById('resultados');
+  resultados.forEach(function (r) {
+    const div = document.createElement('div');
+    div.className = 'r ' + (r.ok ? 'pasa' : 'falla');
+    div.textContent = (r.ok ? '✓ ' : '✕ ') + r.nombre + (r.ok ? '' : ' → ' + r.error);
+    cont.appendChild(div);
+  });
+
+  const fallos = resultados.filter(function (r) { return !r.ok; }).length;
+  const totales = document.getElementById('totales');
+  totales.textContent = fallos === 0
+    ? 'RESULTADO: ' + resultados.length + ' pruebas, todas pasan.'
+    : 'RESULTADO: ' + fallos + ' de ' + resultados.length + ' pruebas FALLAN.';
+  totales.style.color = fallos === 0 ? 'var(--exito)' : 'var(--error)';
+  document.title = (fallos === 0 ? 'OK' : 'FALLOS') + ' · Pruebas';
+})();
+</script>
+</body>
+</html>
