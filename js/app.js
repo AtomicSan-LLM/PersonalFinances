@@ -155,7 +155,9 @@ FP.app = (function () {
   }
 
   function actualizarNav() {
-    const nAlertas = FP.dominio.contarAlertas(periodo);
+    /* Global: un aviso en un mes distinto al que se está viendo debe
+       encender igual la campana (ver dominio.alertasTodas). */
+    const nAlertas = FP.dominio.contarAlertasTodas();
 
     U.$$('.nav-enlace').forEach(function (a) {
       const activo = a.dataset.ruta === rutaActual;

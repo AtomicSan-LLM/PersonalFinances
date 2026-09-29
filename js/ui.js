@@ -398,6 +398,10 @@ FP.ui = (function () {
       el('div', { class: 'alerta__cuerpo' }, [
         el('div', { class: 'alerta__titulo' }, [
           alerta.titulo,
+          (op.mostrarPeriodo && alerta.periodo)
+            ? el('span', { class: 'texto-sm texto-apagado', style: 'font-weight:400' },
+              ' · ' + FP.util.periodoLegible(alerta.periodo, true))
+            : null,
           distintivo(
             alerta.etiqueta || (alerta.condicion === 'meta' ? 'Meta en riesgo' : 'Revisar presupuesto'),
             alerta.severidad === 'error' ? 'error' : 'advertencia'

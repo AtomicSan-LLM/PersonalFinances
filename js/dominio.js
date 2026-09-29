@@ -323,6 +323,31 @@ FP.dominio = (function () {
 
   function contarAlertas(periodo) { return alertas(periodo).length; }
 
+  /**
+   * Avisos de TODOS los periodos con datos, no solo el que se está viendo.
+   * Corrige un vacío frente a SC-003 y al caso borde de registro tardío
+   * (PA-12): sin esto, superar un tope en un mes que no es el
+   * seleccionado no generaba ningún aviso visible en ningún lado.
+   * Cada aviso ya trae su propio `periodo`, así que se puede identificar
+   * a qué mes pertenece aunque la lista mezcle varios.
+   */
+  function alertasTodas(opciones) {
+    const op = opciones || {};
+    const lista = [];
+    periodosConDatos().forEach(function (p) {
+      lista.push.apply(lista, alertas(p, { incluirDescartados: op.incluirDescartados }));
+    });
+
+    const orden = { error: 0, advertencia: 1, info: 2 };
+    return lista.sort(function (a, b) {
+      if (orden[a.severidad] !== orden[b.severidad]) return orden[a.severidad] - orden[b.severidad];
+      if (a.periodo !== b.periodo) return a.periodo < b.periodo ? 1 : -1; // más reciente primero
+      return 0;
+    });
+  }
+
+  function contarAlertasTodas() { return alertasTodas().length; }
+
   /* ==================================================== recurrentes === */
 
   function vigenteEn(rec, periodo) {
@@ -575,6 +600,7 @@ FP.dominio = (function () {
     umbral: umbral, ETIQUETAS_ESTADO: ETIQUETAS_ESTADO, SEVERIDAD_ESTADO: SEVERIDAD_ESTADO,
     coherenciaPresupuesto: coherenciaPresupuesto,
     alertas: alertas, contarAlertas: contarAlertas,
+    alertasTodas: alertasTodas, contarAlertasTodas: contarAlertasTodas,
     generarRecurrentes: generarRecurrentes, vigenteEn: vigenteEn,
     pendientesDeRevision: pendientesDeRevision, proximosRecurrentes: proximosRecurrentes,
     periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual,

@@ -168,6 +168,24 @@ FP.util = (function () {
 
   function clamp(n, min, max) { return Math.min(Math.max(n, min), max); }
 
+  /**
+   * Dada una lista ordenada, si `valor` choca con `evitar` (son iguales),
+   * devuelve el elemento más cercano a `valor` en la lista que no sea
+   * `evitar`. Si no chocan, devuelve `evitar` tal cual.
+   * Se usa para que "Comparar" nunca deje seleccionado el mismo mes en
+   * ambos selectores (ver comparar.js).
+   */
+  function elegirDistinto(valor, evitar, lista) {
+    if (valor !== evitar) return evitar;
+    const idx = lista.indexOf(valor);
+    if (idx < 0) return evitar;
+    for (let d = 1; d < lista.length; d++) {
+      if (idx + d < lista.length && lista[idx + d] !== valor) return lista[idx + d];
+      if (idx - d >= 0 && lista[idx - d] !== valor) return lista[idx - d];
+    }
+    return evitar;
+  }
+
   function redondear(n, decimales) {
     const f = Math.pow(10, decimales || 0);
     return Math.round((Number(n) + Number.EPSILON) * f) / f;
@@ -224,7 +242,7 @@ FP.util = (function () {
     partesPeriodo: partesPeriodo, sumarMeses: sumarMeses, diffMeses: diffMeses,
     diasEnMes: diasEnMes, fechaEnPeriodo: fechaEnPeriodo,
     fechaCorta: fechaCorta, fechaLarga: fechaLarga, esFechaValida: esFechaValida,
-    clamp: clamp, redondear: redondear, normalizar: normalizar,
+    clamp: clamp, elegirDistinto: elegirDistinto, redondear: redondear, normalizar: normalizar,
     ordenarPor: ordenarPor, agrupar: agrupar, suma: suma,
     variacion: variacion, formatoPorcentaje: formatoPorcentaje
   };

@@ -102,6 +102,20 @@
     igual(U.esFechaValida('holaquetal'), false);
   });
 
+  prueba('elegirDistinto evita que "Comparar" deje el mismo mes en los dos selectores', function () {
+    const lista = ['2026-09', '2026-08', '2026-07', '2026-06'];
+    // Sin choque: se respeta el valor que ya tenía el otro selector.
+    igual(U.elegirDistinto('2026-08', '2026-07', lista), '2026-07');
+    // Choque: busca el más cercano en la lista que no sea el valor elegido.
+    // Empatado entre "2026-09" y "2026-07" (ambos a una posición de distancia),
+    // se resuelve hacia el lado de los meses más antiguos.
+    igual(U.elegirDistinto('2026-08', '2026-08', lista), '2026-07', 'debe saltar a un vecino inmediato');
+    igual(U.elegirDistinto('2026-09', '2026-09', lista), '2026-08', 'en el extremo, salta al único vecino');
+    igual(U.elegirDistinto('2026-06', '2026-06', lista), '2026-07', 'en el otro extremo, salta hacia atrás');
+    // Con un solo mes disponible no hay a dónde saltar: se conserva tal cual.
+    igual(U.elegirDistinto('2026-09', '2026-09', ['2026-09']), '2026-09');
+  });
+
   /* ============================================================ Dinero == */
 
   prueba('El campo de monto entiende los separadores de miles', function () {
@@ -325,6 +339,41 @@
 
     S.restaurarAvisos(ACTUAL);
     igual(D.alertas(ACTUAL).length, 1, 'restaurado');
+  });
+
+  prueba('alertasTodas ve los avisos de un mes anterior aunque no sea el mes seleccionado', function () {
+    limpiar();
+    const anterior = U.sumarMeses(ACTUAL, -1);
+
+    // Un tope superado el mes pasado (p. ej. un registro tardío, PA-12)...
+    S.definirTope(anterior, cat('Mercado'), 600000);
+    S.crearMovimiento({ fecha: anterior + '-09', monto: 650000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    // ...y otro superado este mes.
+    S.definirTope(ACTUAL, cat('Transporte'), 100000);
+    S.crearMovimiento({ fecha: MES + '05', monto: 150000, tipo: 'gasto', categoriaId: cat('Transporte') });
+
+    igual(D.alertas(ACTUAL).length, 1, 'mirando solo el mes actual no se ve el del mes anterior');
+    igual(D.alertas(anterior).length, 1, 'mirando solo el mes anterior no se ve el del mes actual');
+
+    const todas = D.alertasTodas();
+    igual(todas.length, 2, 'alertasTodas junta los dos, sin importar cuál esté seleccionado');
+    igual(D.contarAlertasTodas(), 2);
+    cierto(todas.some(function (a) { return a.periodo === anterior; }), 'incluye el aviso del mes anterior');
+    cierto(todas.some(function (a) { return a.periodo === ACTUAL; }), 'incluye el aviso del mes actual');
+  });
+
+  prueba('alertasTodas respeta los avisos descartados de cada mes por separado', function () {
+    limpiar();
+    const anterior = U.sumarMeses(ACTUAL, -1);
+    S.definirTope(anterior, cat('Mercado'), 600000);
+    S.crearMovimiento({ fecha: anterior + '-09', monto: 650000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.definirTope(ACTUAL, cat('Transporte'), 100000);
+    S.crearMovimiento({ fecha: MES + '05', monto: 150000, tipo: 'gasto', categoriaId: cat('Transporte') });
+
+    igual(D.contarAlertasTodas(), 2);
+    S.descartarAviso(anterior, cat('Mercado'), 'excedido');
+    igual(D.contarAlertasTodas(), 1, 'descartar el del mes anterior no afecta el del mes actual');
+    igual(D.alertasTodas({ incluirDescartados: true }).length, 2, 'el descartado sigue existiendo si se pide incluirlo');
   });
 
   prueba('FR-021: se avisa cuando la meta de ahorro está en riesgo', function () {

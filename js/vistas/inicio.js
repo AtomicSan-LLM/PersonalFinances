@@ -50,7 +50,11 @@ FP.vistas.inicio = (function () {
     cont.appendChild(tarjetaResumen(r, periodo, ctx));
 
     const alertas = FP.dominio.alertas(periodo);
-    cont.appendChild(seccionAlertas(alertas, periodo, ctx));
+    /* El resto de avisos activos que no son de este mes (ver dominio.alertasTodas):
+       sin esto, "Todo bajo control" podía sonar a que no hay nada pendiente en
+       ningún lado, cuando en realidad solo se evaluó el mes que se está viendo. */
+    const enOtrosMeses = Math.max(0, FP.dominio.contarAlertasTodas() - alertas.length);
+    cont.appendChild(seccionAlertas(alertas, periodo, ctx, enOtrosMeses));
 
     const rejilla = el('div', { class: 'rejilla rejilla--panel mt-5' }, [
       seccionPresupuesto(periodo, ctx),
@@ -130,15 +134,19 @@ FP.vistas.inicio = (function () {
 
   /* ------------------------------------------------------- Alertas ---- */
 
-  function seccionAlertas(alertas, periodo, ctx) {
+  function seccionAlertas(alertas, periodo, ctx, enOtrosMeses) {
     const seccion = el('section', { class: 'seccion mt-5', 'aria-label': 'Avisos del mes' });
 
     if (!alertas.length) {
       seccion.appendChild(el('div', { class: 'alerta alerta--info' }, [
         el('span', { class: 'alerta__icono', 'aria-hidden': 'true' }, '✓'),
         el('div', { class: 'alerta__cuerpo' }, [
-          el('div', { class: 'alerta__titulo' }, 'Todo bajo control'),
-          el('p', { class: 'alerta__texto' }, 'No tienes avisos pendientes en ' + U.periodoLegible(periodo) + '.')
+          el('div', { class: 'alerta__titulo' }, 'Todo bajo control en ' + U.periodoLegible(periodo)),
+          el('p', { class: 'alerta__texto' }, 'No tienes avisos pendientes en ' + U.periodoLegible(periodo) + '.'),
+          enOtrosMeses ? el('button', {
+            type: 'button', class: 'btn btn--sm mt-3',
+            onclick: function () { ctx.irA('alertas'); }
+          }, 'Pero tienes ' + enOtrosMeses + ' aviso(s) en otros meses. Ver') : null
         ])
       ]));
       return seccion;
@@ -183,6 +191,11 @@ FP.vistas.inicio = (function () {
     if (alertas.length > 3) {
       seccion.appendChild(el('p', { class: 'texto-sm texto-apagado mt-3' },
         'Y ' + (alertas.length - 3) + ' aviso(s) más.'));
+    }
+
+    if (enOtrosMeses) {
+      seccion.appendChild(el('p', { class: 'texto-sm texto-apagado mt-3' },
+        'Además, ' + enOtrosMeses + ' aviso(s) en otros meses.'));
     }
 
     return seccion;

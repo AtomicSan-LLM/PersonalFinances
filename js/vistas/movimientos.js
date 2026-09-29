@@ -163,6 +163,7 @@ FP.vistas.movimientos = (function () {
     movs.forEach(function (m) {
       const cat = FP.store.categoria(m.categoriaId);
       const esIngreso = m.tipo === 'ingreso';
+      const esFutura = m.fecha > U.hoyISO();
 
       cuerpo.appendChild(el('tr', null, [
         el('td', { class: 'nowrap' }, U.fechaCorta(m.fecha)),
@@ -174,10 +175,11 @@ FP.vistas.movimientos = (function () {
         ]),
         el('td', null, [
           el('div', null, m.descripcion || el('span', { class: 'texto-apagado' }, '—')),
-          (m.recurrenteId || m.recurrenteOrigen || m.revisar)
-            ? el('div', { class: 'fila', style: 'gap:6px;margin-top:4px' }, [
+          (m.recurrenteId || m.recurrenteOrigen || m.revisar || esFutura)
+            ? el('div', { class: 'fila', style: 'gap:6px;margin-top:4px;flex-wrap:wrap' }, [
               (m.recurrenteId || m.recurrenteOrigen) ? ui.distintivo('Generado por recurrente', 'info', '🔁') : null,
-              m.revisar ? ui.distintivo('Por revisar', 'advertencia', '👁') : null
+              m.revisar ? ui.distintivo('Por revisar', 'advertencia', '👁') : null,
+              esFutura ? ui.distintivo('Fecha futura', 'neutro', '📅') : null
             ])
             : null
         ]),

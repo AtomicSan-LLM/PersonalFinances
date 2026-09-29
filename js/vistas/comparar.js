@@ -65,11 +65,23 @@ FP.vistas.comparar = (function () {
     return el('div', { class: 'tarjeta' }, [
       el('div', { class: 'fila', style: 'gap:16px;align-items:flex-end' }, [
         el('div', { style: 'flex:1;min-width:170px' }, [
-          ui.campo({ etiqueta: 'Mes base', control: select(mesA, function (v) { mesA = v; }, 'Mes base') })
+          ui.campo({
+            etiqueta: 'Mes base', control: select(mesA, function (v) {
+              mesA = v;
+              /* Si coincide con el otro selector, ese salta al mes disponible
+                 más cercano: comparar un mes consigo mismo no tiene sentido. */
+              if (mesA === mesB) mesB = U.elegirDistinto(mesB, mesA, disponibles);
+            }, 'Mes base')
+          })
         ]),
         el('span', { class: 'texto-apagado', style: 'font-weight:700;padding-bottom:22px' }, 'VS'),
         el('div', { style: 'flex:1;min-width:170px' }, [
-          ui.campo({ etiqueta: 'Mes a comparar', control: select(mesB, function (v) { mesB = v; }, 'Mes a comparar') })
+          ui.campo({
+            etiqueta: 'Mes a comparar', control: select(mesB, function (v) {
+              mesB = v;
+              if (mesB === mesA) mesA = U.elegirDistinto(mesA, mesB, disponibles);
+            }, 'Mes a comparar')
+          })
         ]),
         el('button', {
           type: 'button', class: 'btn', style: 'margin-bottom:16px',
