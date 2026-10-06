@@ -99,6 +99,7 @@ FP.vistas.recurrentes = (function () {
       el('span', null, cat ? cat.nombre : 'Sin categoría')
     ];
 
+    if (rec.tipo === 'gasto' && FP.medios.esValido(rec.medioPago)) meta.push(ui.distintivoMedio(rec.medioPago));
     if (rec.montoVariable) meta.push(ui.distintivo('Monto variable', 'info', '≈'));
     if (rec.diaMes > 28) meta.push(ui.distintivo('Ajusta a fin de mes', 'neutro', '📅'));
 

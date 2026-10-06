@@ -43,20 +43,52 @@ FP.vistas.historico = (function () {
       return;
     }
 
+    const medio = ctx.medioPago || 'todos';
+    const infoMedio = FP.medios.info(medio);
+    if (medio !== 'todos') {
+      cont.appendChild(el('div', { class: 'aviso-medio', style: 'margin:0 0 var(--e-4)' },
+        infoMedio.icono + ' Filtrando los gastos por medio de pago: ' + infoMedio.etiqueta +
+        '. Ingresos, ahorro real, meta y topes siguen considerando todos los medios de pago.'));
+    }
+
     cont.appendChild(tablaResumen(filas, ctx));
 
     const serie = FP.dominio.serieMensual(mesesMostrados);
     const etiquetas = serie.map(function (r) { return U.periodoLegible(r.periodo, true); });
 
+    const seriesIG = [
+      { nombre: 'Ingresos', color: COLORES.ingreso, valores: serie.map(function (r) { return r.ingresos; }) },
+      { nombre: 'Gastos', color: COLORES.gasto, valores: serie.map(function (r) { return r.gastos; }) }
+    ];
+    if (medio !== 'todos') {
+      seriesIG.push({
+        nombre: 'Gastos · ' + infoMedio.etiqueta, color: infoMedio.color,
+        valores: serie.map(function (r) { return FP.dominio.gastosSegunMedio(r, medio); })
+      });
+    }
+
     cont.appendChild(el('section', { class: 'tarjeta mt-4' }, [
       ui.cabeceraSeccion('Ingresos y gastos', [selectorRango(ctx)]),
       FP.graficos.columnas({
         etiquetas: etiquetas,
-        series: [
-          { nombre: 'Ingresos', color: COLORES.ingreso, valores: serie.map(function (r) { return r.ingresos; }) },
-          { nombre: 'Gastos', color: COLORES.gasto, valores: serie.map(function (r) { return r.gastos; }) }
-        ],
+        series: seriesIG,
         descripcion: 'Ingresos y gastos de los últimos ' + serie.length + ' meses'
+      })
+    ]));
+
+    /* Gastos por medio de pago: siempre completo; la suma de las barras de un
+       mes es igual a su total de gastos. */
+    cont.appendChild(el('section', { class: 'tarjeta mt-4' }, [
+      el('h2', { class: 'seccion__titulo', style: 'margin-bottom:12px' }, 'Gastos por medio de pago'),
+      FP.graficos.columnas({
+        etiquetas: etiquetas,
+        series: FP.medios.todos().map(function (m) {
+          return {
+            nombre: m.etiqueta, color: m.color,
+            valores: serie.map(function (r) { return r.gastosPorMedio[m.clave] || 0; })
+          };
+        }),
+        descripcion: 'Gastos por medio de pago de los últimos ' + serie.length + ' meses'
       })
     ]));
 
@@ -93,6 +125,8 @@ FP.vistas.historico = (function () {
 
   function tablaResumen(filas, ctx) {
     const cuerpo = el('tbody');
+    const medio = ctx.medioPago || 'todos';
+    const infoMedio = FP.medios.info(medio);
 
     filas.forEach(function (r) {
       const esActual = r.periodo === U.periodoActual();
@@ -110,6 +144,13 @@ FP.vistas.historico = (function () {
         ]),
         el('td', { class: 'num nowrap monto--ingreso' }, FP.dinero.formato(r.ingresos)),
         el('td', { class: 'num nowrap monto--gasto' }, FP.dinero.formato(r.gastos)),
+        medio !== 'todos'
+          ? el('td', { class: 'num nowrap' }, FP.dinero.formato(FP.dominio.gastosSegunMedio(r, medio)))
+          : null,
+        medio !== 'todos'
+          ? el('td', { class: 'num nowrap texto-apagado' },
+            U.formatoPorcentaje(r.gastos > 0 ? (FP.dominio.gastosSegunMedio(r, medio) / r.gastos) * 100 : 0, 0))
+          : null,
         el('td', {
           class: 'num nowrap',
           style: 'font-weight:700' + (r.ahorroReal < 0 ? ';color:var(--error)' : '')
@@ -142,6 +183,8 @@ FP.vistas.historico = (function () {
               el('th', { scope: 'col' }, 'Mes'),
               el('th', { scope: 'col', class: 'num' }, 'Ingresos'),
               el('th', { scope: 'col', class: 'num' }, 'Gastos'),
+              medio !== 'todos' ? el('th', { scope: 'col', class: 'num' }, 'Gastos · ' + infoMedio.etiqueta) : null,
+              medio !== 'todos' ? el('th', { scope: 'col', class: 'num' }, '% del gasto') : null,
               el('th', { scope: 'col', class: 'num' }, 'Ahorro'),
               el('th', { scope: 'col', class: 'num' }, 'Meta'),
               el('th', { scope: 'col' }, 'Cumplimiento'),
@@ -158,8 +201,9 @@ FP.vistas.historico = (function () {
 
   function gastoPorCategoria(ctx) {
     const periodo = ctx.periodo;
-    const totales = FP.dominio.totalesPorCategoria(periodo, 'gasto');
-    const anterior = FP.dominio.totalesPorCategoria(U.sumarMeses(periodo, -1), 'gasto');
+    const medio = ctx.medioPago || 'todos';
+    const totales = FP.dominio.totalesPorCategoria(periodo, 'gasto', medio);
+    const anterior = FP.dominio.totalesPorCategoria(U.sumarMeses(periodo, -1), 'gasto', medio);
 
     const items = [];
     totales.forEach(function (valor, id) {
@@ -182,7 +226,8 @@ FP.vistas.historico = (function () {
     items.sort(function (a, b) { return b.valor - a.valor; });
 
     return el('section', { class: 'tarjeta mt-4' }, [
-      el('h2', { class: 'seccion__titulo', style: 'margin-bottom:4px' }, 'Gasto por categoría'),
+      el('h2', { class: 'seccion__titulo', style: 'margin-bottom:4px' },
+        'Gasto por categoría' + (medio !== 'todos' ? ' · ' + FP.medios.info(medio).etiqueta : '')),
       el('p', { class: 'texto-sm texto-apagado', style: 'margin-bottom:16px' },
         U.periodoLegible(periodo) + ', comparado con el mes anterior.'),
       FP.graficos.barrasHorizontales({ items: items })
@@ -193,6 +238,7 @@ FP.vistas.historico = (function () {
     titulo: 'Histórico',
     icono: '📈',
     enNavegacion: true,
+    usaFiltroMedio: true,
     subtitulo: function () {
       const n = FP.dominio.historico().filter(function (r) { return r.nMovimientos > 0; }).length;
       return n ? n + ' mes(es) con información registrada' : 'Sin meses registrados todavía';

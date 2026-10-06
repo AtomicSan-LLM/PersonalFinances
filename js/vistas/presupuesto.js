@@ -90,6 +90,14 @@ FP.vistas.presupuesto = (function () {
     seccion.appendChild(tarjeta);
     cont.appendChild(seccion);
 
+    /* Análisis por medio de pago: informativo; los topes cuentan todos los gastos. */
+    const medios = ui.tarjetaMediosPago(periodo, {
+      nota: 'Es solo informativo: los topes de arriba cuentan todos tus gastos del mes, ' +
+        'sin importar si fueron con débito, crédito o efectivo.'
+    });
+    medios.classList.add('mt-4');
+    cont.appendChild(medios);
+
     /* Resumen del plan */
     if (conTope.length) {
       cont.appendChild(el('div', { class: 'tarjeta' }, [

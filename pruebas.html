@@ -684,6 +684,174 @@
     igual(D.resumen(ACTUAL).gastos, 55000, 'se releyeron desde el almacenamiento');
   });
 
+  /* ========================================================= Medio de pago == */
+
+  prueba('Medio de pago: solo los gastos lo llevan y los valores inválidos se descartan', function () {
+    igual(FP.medios.normalizar('gasto', 'credito'), 'credito');
+    igual(FP.medios.normalizar('gasto', 'debito'), 'debito');
+    igual(FP.medios.normalizar('gasto', 'efectivo'), 'efectivo');
+    igual(FP.medios.normalizar('gasto', 'cheque'), null, 'un valor desconocido no se guarda');
+    igual(FP.medios.normalizar('gasto', ''), null);
+    igual(FP.medios.normalizar('ingreso', 'credito'), null, 'un ingreso nunca tiene medio de pago');
+    igual(FP.medios.de({ tipo: 'gasto' }), 'sin-especificar', 'un gasto antiguo sin el campo');
+    igual(FP.medios.de({ tipo: 'gasto', medioPago: 'credito' }), 'credito');
+    igual(FP.medios.de({ tipo: 'ingreso', medioPago: 'credito' }), null);
+  });
+
+  prueba('Medio de pago: se guarda con el gasto y no cambia su categoría', function () {
+    limpiar();
+    const mov = S.crearMovimiento({
+      fecha: MES + '05', monto: 200000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito'
+    });
+    igual(mov.medioPago, 'credito');
+    igual(mov.categoriaId, cat('Mercado'), 'la categoría sigue siendo la elegida');
+
+    const ingreso = S.crearMovimiento({
+      fecha: MES + '01', monto: 3000000, tipo: 'ingreso', categoriaId: cat('Salario'), medioPago: 'debito'
+    });
+    igual(ingreso.medioPago, null, 'el ingreso ignora el medio de pago');
+  });
+
+  prueba('Medio de pago: el gasto con tarjeta cuenta igual en la categoría, el tope y los totales', function () {
+    limpiar();
+    S.definirTope(ACTUAL, cat('Mercado'), 500000);
+    S.crearMovimiento({ fecha: MES + '03', monto: 300000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: MES + '04', monto: 250000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'debito' });
+    S.crearMovimiento({ fecha: MES + '05', monto: 50000, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    igual(D.resumen(ACTUAL).gastos, 600000, 'el total del mes incluye todos los medios');
+    igual(D.totalesPorCategoria(ACTUAL, 'gasto').get(cat('Mercado')), 600000, 'el total de la categoría también');
+    const fila = D.estadoTopes(ACTUAL).find(function (f) { return f.categoriaId === cat('Mercado'); });
+    igual(fila.gastado, 600000, 'el tope mide todos los gastos, sin importar el medio');
+    igual(fila.estado, 'excedido');
+  });
+
+  prueba('Medio de pago: el desglose siempre suma el total de gastos del mes', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '03', monto: 100000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: MES + '04', monto: 40000, tipo: 'gasto', categoriaId: cat('Transporte'), medioPago: 'debito' });
+    S.crearMovimiento({ fecha: MES + '05', monto: 25000, tipo: 'gasto', categoriaId: cat('Transporte'), medioPago: 'efectivo' });
+    S.crearMovimiento({ fecha: MES + '06', monto: 10000, tipo: 'gasto', categoriaId: cat('Otros gastos') });
+    S.crearMovimiento({ fecha: MES + '01', monto: 900000, tipo: 'ingreso', categoriaId: cat('Salario') });
+
+    const r = D.resumen(ACTUAL);
+    const filas = D.desgloseMedioPago(ACTUAL);
+    const suma = filas.reduce(function (acc, f) { return acc + f.total; }, 0);
+    igual(r.gastos, 175000);
+    igual(suma, r.gastos, 'la suma por medios coincide con el total de gastos (sin incongruencias)');
+    igual(filas.find(function (f) { return f.clave === 'credito'; }).total, 100000);
+    igual(filas.find(function (f) { return f.clave === 'sin-especificar'; }).total, 10000, 'sin medio = sin especificar');
+    igual(r.ingresos, 900000, 'los ingresos no se reparten por medio');
+  });
+
+  prueba('Medio de pago: un movimiento anterior a esta función cuenta como "Sin especificar"', function () {
+    limpiar();
+    // Simula una copia de seguridad antigua: el movimiento no trae el campo medioPago.
+    const antigua = JSON.parse(S.exportarJSON());
+    antigua.movimientos.push({
+      id: 'mov_viejo', fecha: MES + '02', monto: 80000, tipo: 'gasto',
+      descripcion: 'Antiguo', categoriaId: cat('Mercado'), recurrenteId: null, revisar: false
+    });
+    S.importarJSON(JSON.stringify(antigua));
+
+    igual(D.resumen(ACTUAL).gastosPorMedio['sin-especificar'], 80000);
+    igual(D.filtrarMovimientos(ACTUAL, { medioPago: 'sin-especificar' }).length, 1);
+    igual(D.filtrarMovimientos(ACTUAL, { medioPago: 'credito' }).length, 0);
+  });
+
+  prueba('Filtro por medio de pago: deja solo los gastos de ese medio (sin ingresos)', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '01', monto: 900000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '03', monto: 100000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: MES + '04', monto: 40000, tipo: 'gasto', categoriaId: cat('Transporte'), medioPago: 'debito' });
+    S.crearMovimiento({ fecha: MES + '05', monto: 60000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+
+    const credito = D.filtrarMovimientos(ACTUAL, { medioPago: 'credito' });
+    igual(credito.length, 2);
+    cierto(credito.every(function (m) { return m.tipo === 'gasto'; }), 'solo gastos');
+    igual(D.filtrarMovimientos(ACTUAL, { medioPago: 'todos' }).length, 4, 'todos = sin filtrar');
+    igual(D.filtrarMovimientos(ACTUAL, { medioPago: 'credito', categoriaId: cat('Transporte') }).length, 0,
+      'se combina con el filtro de categoría');
+    igual(D.totalesPorCategoria(ACTUAL, 'gasto', 'credito').get(cat('Mercado')), 160000);
+    igual(D.totalesPorCategoria(ACTUAL, 'gasto', 'credito').has(cat('Transporte')), false);
+  });
+
+  prueba('Medio de pago: editar el movimiento cambia el medio y al pasar a ingreso se borra', function () {
+    limpiar();
+    const mov = S.crearMovimiento({ fecha: MES + '03', monto: 50000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'debito' });
+    S.actualizarMovimiento(mov.id, { medioPago: 'credito' });
+    igual(S.movimiento(mov.id).medioPago, 'credito');
+    S.actualizarMovimiento(mov.id, { medioPago: null });
+    igual(S.movimiento(mov.id).medioPago, null, 'se puede dejar sin especificar');
+
+    S.actualizarMovimiento(mov.id, { medioPago: 'credito' });
+    S.actualizarMovimiento(mov.id, { tipo: 'ingreso', categoriaId: cat('Salario') });
+    igual(S.movimiento(mov.id).medioPago, null, 'un ingreso no conserva el medio de pago');
+  });
+
+  prueba('Medio de pago: un recurrente lo hereda en cada movimiento que genera', function () {
+    limpiar();
+    S.crearRecurrente({
+      tipo: 'gasto', monto: 1000000, descripcion: 'Arriendo', categoriaId: cat('Vivienda'),
+      diaMes: 1, desde: U.sumarMeses(ACTUAL, -1), medioPago: 'debito'
+    });
+    S.crearRecurrente({
+      tipo: 'ingreso', monto: 4000000, descripcion: 'Salario', categoriaId: cat('Salario'),
+      diaMes: 5, desde: ACTUAL, medioPago: 'credito'
+    });
+    const generados = D.generarRecurrentes();
+    const arriendos = generados.filter(function (m) { return m.descripcion === 'Arriendo'; });
+    igual(arriendos.length, 2);
+    cierto(arriendos.every(function (m) { return m.medioPago === 'debito'; }), 'los gastos generados heredan el medio');
+    const salario = generados.find(function (m) { return m.descripcion === 'Salario'; });
+    igual(salario.medioPago, null, 'el ingreso recurrente no tiene medio de pago');
+  });
+
+  prueba('Medio de pago: validación (opcional, pero si viene debe ser válido)', function () {
+    limpiar();
+    const base = { tipo: 'gasto', monto: 1000, fecha: MES + '05', categoriaId: cat('Mercado') };
+    igual(D.hayErrores(D.validarMovimiento(base)), false, 'sin medio es válido (opcional)');
+    igual(D.hayErrores(D.validarMovimiento(Object.assign({}, base, { medioPago: 'credito' }))), false);
+    cierto(D.validarMovimiento(Object.assign({}, base, { medioPago: 'cheque' })).medioPago,
+      'un medio desconocido debe rechazarse');
+  });
+
+  prueba('Comparar con filtro de medio: ingresos, ahorro y meta no cambian y los medios suman los gastos', function () {
+    limpiar();
+    const anterior = U.sumarMeses(ACTUAL, -1);
+    S.crearMovimiento({ fecha: anterior + '-01', monto: 2000000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: anterior + '-05', monto: 300000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: anterior + '-06', monto: 100000, tipo: 'gasto', categoriaId: cat('Transporte'), medioPago: 'debito' });
+    S.crearMovimiento({ fecha: MES + '01', monto: 2000000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 500000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+
+    const sin = D.comparar(anterior, ACTUAL);
+    const con = D.comparar(anterior, ACTUAL, 'credito');
+    const valor = function (cmp, clave) { return cmp.indicadores.find(function (i) { return i.clave === clave; }); };
+
+    igual(valor(con, 'ingresos').b, valor(sin, 'ingresos').b, 'ingresos iguales con y sin filtro');
+    igual(valor(con, 'gastos').b, valor(sin, 'gastos').b, 'el total de gastos no se filtra');
+    igual(valor(con, 'ahorro').b, valor(sin, 'ahorro').b, 'el ahorro real usa todos los gastos');
+    igual(valor(con, 'gastosMedio').a, 300000);
+    igual(valor(con, 'gastosMedio').b, 500000);
+    igual(valor(sin, 'gastosMedio'), undefined, 'sin filtro no hay fila extra');
+
+    const sumaA = con.medios.reduce(function (acc, m) { return acc + m.a; }, 0);
+    const sumaB = con.medios.reduce(function (acc, m) { return acc + m.b; }, 0);
+    igual(sumaA, con.a.gastos, 'los medios del mes A suman sus gastos');
+    igual(sumaB, con.b.gastos, 'los medios del mes B suman sus gastos');
+    igual(con.categorias.length, 1, 'con filtro solo quedan las categorías con gasto en crédito');
+  });
+
+  prueba('Medio de pago: exportar e importar conserva el medio de cada gasto', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '05', monto: 123456, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    const copia = S.exportarJSON();
+    S.borrarTodo();
+    S.importarJSON(copia);
+    igual(D.resumen(ACTUAL).gastosPorMedio.credito, 123456);
+  });
+
   /* ============================================================ Informe == */
 
   limpiar();

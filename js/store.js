@@ -170,6 +170,7 @@ FP.store = (function () {
         tipo: datos.tipo === 'ingreso' ? 'ingreso' : 'gasto',
         descripcion: (datos.descripcion || '').trim(),
         categoriaId: datos.categoriaId || null,
+        medioPago: FP.medios.normalizar(datos.tipo === 'ingreso' ? 'ingreso' : 'gasto', datos.medioPago),
         recurrenteId: datos.recurrenteId || null,
         revisar: !!datos.revisar,
         creadoEn: new Date().toISOString()
@@ -189,6 +190,9 @@ FP.store = (function () {
       if (cambios.descripcion !== undefined) mov.descripcion = (cambios.descripcion || '').trim();
       if (cambios.categoriaId !== undefined) mov.categoriaId = cambios.categoriaId;
       if (cambios.revisar !== undefined) mov.revisar = !!cambios.revisar;
+      if (cambios.medioPago !== undefined) mov.medioPago = cambios.medioPago;
+      /* Solo los gastos tienen medio de pago (también si se cambia el tipo). */
+      mov.medioPago = FP.medios.normalizar(mov.tipo, mov.medioPago);
       mov.modificadoEn = new Date().toISOString();
       return mov;
     });
@@ -391,6 +395,7 @@ FP.store = (function () {
         monto: Math.abs(Number(datos.monto) || 0),
         descripcion: (datos.descripcion || '').trim(),
         categoriaId: datos.categoriaId || null,
+        medioPago: FP.medios.normalizar(datos.tipo === 'ingreso' ? 'ingreso' : 'gasto', datos.medioPago),
         diaMes: U.clamp(Number(datos.diaMes) || 1, 1, 31),
         desde: datos.desde || U.periodoActual(),
         hasta: datos.hasta || null,
@@ -415,6 +420,8 @@ FP.store = (function () {
         if (cambios[k] !== undefined) rec[k] = cambios[k];
       });
       if (cambios.monto !== undefined) rec.monto = Math.abs(Number(cambios.monto) || 0);
+      if (cambios.medioPago !== undefined) rec.medioPago = cambios.medioPago;
+      rec.medioPago = FP.medios.normalizar(rec.tipo, rec.medioPago);
       if (cambios.diaMes !== undefined) rec.diaMes = U.clamp(Number(cambios.diaMes) || 1, 1, 31);
       rec.modificadoEn = new Date().toISOString();
       return rec;

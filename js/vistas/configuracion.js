@@ -299,6 +299,12 @@ FP.vistas.configuracion = (function () {
       { d: 28, tipo: 'ingreso', cat: 'Otros ingresos', desc: 'Trabajo independiente', base: 400000 }
     ];
 
+    /* Medio de pago de los gastos de ejemplo (el Taxi se deja sin especificar a propósito). */
+    const medioEjemplo = {
+      'Arriendo': 'debito', 'Compra de la semana': 'credito', 'Recarga de transporte': 'efectivo',
+      'Energía y agua': 'debito', 'Internet': 'credito', 'Cine y salidas': 'credito', 'Farmacia': 'debito'
+    };
+
     FP.store.aplicar(function (s) {
       for (let i = 2; i >= 0; i--) {
         const p = U.sumarMeses(actual, -i);
@@ -306,11 +312,12 @@ FP.vistas.configuracion = (function () {
 
         /* Salario y arriendo del mes */
         s.movimientos.push(nuevo(p, 30, 'ingreso', cat('Salario'), 'Salario mensual', 4500000));
-        s.movimientos.push(nuevo(p, 1, 'gasto', cat('Vivienda'), 'Arriendo', 1000000));
+        s.movimientos.push(nuevo(p, 1, 'gasto', cat('Vivienda'), 'Arriendo', 1000000, medioEjemplo['Arriendo']));
 
         plantilla.forEach(function (m) {
           if (i === 0 && m.d > Number(U.hoyISO().slice(8, 10))) return; // no inventar el futuro
-          s.movimientos.push(nuevo(p, m.d, m.tipo, cat(m.cat), m.desc, Math.round(m.base * factor / 1000) * 1000));
+          s.movimientos.push(nuevo(p, m.d, m.tipo, cat(m.cat), m.desc, Math.round(m.base * factor / 1000) * 1000,
+            m.tipo === 'gasto' ? medioEjemplo[m.desc] : null));
         });
 
         s.presupuestos = s.presupuestos.filter(function (x) { return x.periodo !== p; });
@@ -332,7 +339,7 @@ FP.vistas.configuracion = (function () {
     ctx.irA('inicio');
   }
 
-  function nuevo(periodo, dia, tipo, categoriaId, descripcion, monto) {
+  function nuevo(periodo, dia, tipo, categoriaId, descripcion, monto, medioPago) {
     return {
       id: U.uid('mov'),
       fecha: U.fechaEnPeriodo(periodo, dia),
@@ -340,6 +347,7 @@ FP.vistas.configuracion = (function () {
       tipo: tipo,
       descripcion: descripcion,
       categoriaId: categoriaId,
+      medioPago: FP.medios.normalizar(tipo, medioPago),
       recurrenteId: null,
       revisar: false,
       creadoEn: new Date().toISOString()

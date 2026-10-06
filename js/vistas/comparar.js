@@ -45,10 +45,17 @@ FP.vistas.comparar = (function () {
     }
 
     inicializar(ctx);
-    const datos = FP.dominio.comparar(mesA, mesB);
+    const datos = FP.dominio.comparar(mesA, mesB, ctx.medioPago);
 
     cont.appendChild(selectores(disponibles, ctx));
+    if (datos.medio !== 'todos') {
+      const m = FP.medios.info(datos.medio);
+      cont.appendChild(el('div', { class: 'aviso-medio' },
+        m.icono + ' Filtrando los gastos por medio de pago: ' + m.etiqueta +
+        '. Ingresos, ahorro real y meta siguen considerando todos los medios de pago.'));
+    }
     cont.appendChild(tarjetaIndicadores(datos));
+    cont.appendChild(tarjetaMedios(datos));
     cont.appendChild(tarjetaCategorias(datos));
   }
 
@@ -158,12 +165,62 @@ FP.vistas.comparar = (function () {
     return ui.distintivo(texto, ok ? 'exito' : 'error', ok ? '✓' : '✕');
   }
 
+  /* ------------------------------------------- Medios de pago --------- */
+
+  /** Gasto por medio de pago de ambos meses; el total coincide con "Gastos". */
+  function tarjetaMedios(datos) {
+    const filas = datos.medios.filter(function (f) { return f.a || f.b; });
+    if (!filas.length) return el('div');
+
+    const cuerpo = el('tbody');
+    filas.forEach(function (f) {
+      cuerpo.appendChild(el('tr', null, [
+        el('th', { scope: 'row' }, [el('span', { 'aria-hidden': 'true' }, f.icono + ' '), f.etiqueta]),
+        el('td', { class: 'num nowrap' }, FP.dinero.formato(f.a)),
+        el('td', { class: 'num nowrap' }, FP.dinero.formato(f.b)),
+        el('td', { class: 'num nowrap' }, cambio(f))
+      ]));
+    });
+
+    const delta = datos.b.gastos - datos.a.gastos;
+    const totalInd = {
+      delta: delta, variacion: U.variacion(datos.a.gastos, datos.b.gastos),
+      tendencia: delta === 0 ? 'igual' : (delta < 0 ? 'mejor' : 'peor')
+    };
+    cuerpo.appendChild(el('tr', null, [
+      el('th', { scope: 'row', style: 'font-weight:800' }, 'Total gastos'),
+      el('td', { class: 'num nowrap', style: 'font-weight:700' }, FP.dinero.formato(datos.a.gastos)),
+      el('td', { class: 'num nowrap', style: 'font-weight:700' }, FP.dinero.formato(datos.b.gastos)),
+      el('td', { class: 'num nowrap' }, cambio(totalInd))
+    ]));
+
+    return el('section', { class: 'tarjeta mt-4' }, [
+      el('h2', { class: 'seccion__titulo', style: 'margin-bottom:12px' }, 'Gastos por medio de pago'),
+      el('div', { class: 'tabla-contenedor' }, [
+        el('table', { class: 'tabla' }, [
+          el('thead', null, [
+            el('tr', null, [
+              el('th', { scope: 'col' }, 'Medio de pago'),
+              el('th', { scope: 'col', class: 'num' }, U.periodoLegible(datos.a.periodo)),
+              el('th', { scope: 'col', class: 'num' }, U.periodoLegible(datos.b.periodo)),
+              el('th', { scope: 'col', class: 'num' }, 'Cambio')
+            ])
+          ]),
+          cuerpo
+        ])
+      ]),
+      el('p', { class: 'campo__ayuda mt-3' },
+        'Los medios suman el total de gastos de cada mes (incluye "Sin especificar").')
+    ]);
+  }
+
   /* -------------------------------------------------- Categorías ------ */
 
   function tarjetaCategorias(datos) {
+    const sufijo = datos.medio !== 'todos' ? ' · ' + FP.medios.info(datos.medio).etiqueta : '';
     if (!datos.categorias.length) {
       return el('section', { class: 'tarjeta mt-4' }, [
-        el('h2', { class: 'seccion__titulo' }, 'Gasto por categoría'),
+        el('h2', { class: 'seccion__titulo' }, 'Gasto por categoría' + sufijo),
         el('p', { class: 'texto-apagado mt-3' }, 'No hay gastos registrados en ninguno de los dos meses.')
       ]);
     }
@@ -189,7 +246,7 @@ FP.vistas.comparar = (function () {
     });
 
     return el('section', { class: 'tarjeta mt-4' }, [
-      el('h2', { class: 'seccion__titulo', style: 'margin-bottom:12px' }, 'Gasto por categoría'),
+      el('h2', { class: 'seccion__titulo', style: 'margin-bottom:12px' }, 'Gasto por categoría' + sufijo),
       el('div', { class: 'tabla-contenedor' }, [
         el('table', { class: 'tabla' }, [
           el('thead', null, [
@@ -213,6 +270,7 @@ FP.vistas.comparar = (function () {
     icono: '⚖️',
     enNavegacion: false,
     ocultarSelectorMes: true,
+    usaFiltroMedio: true,
     subtitulo: function () { return '¿Estoy mejorando o empeorando?'; },
     render: render
   };

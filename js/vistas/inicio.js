@@ -57,7 +57,10 @@ FP.vistas.inicio = (function () {
     cont.appendChild(seccionAlertas(alertas, periodo, ctx, enOtrosMeses));
 
     const rejilla = el('div', { class: 'rejilla rejilla--panel mt-5' }, [
-      seccionPresupuesto(periodo, ctx),
+      el('div', { class: 'pila pila--4' }, [
+        seccionPresupuesto(periodo, ctx),
+        ui.tarjetaMediosPago(periodo)
+      ]),
       el('div', { class: 'pila pila--4' }, [
         seccionRecientes(periodo, ctx),
         seccionPendientes(periodo, ctx)

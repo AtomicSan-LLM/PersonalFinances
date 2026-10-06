@@ -193,6 +193,13 @@ FP.ui = (function () {
     );
   }
 
+  /** Distintivo del medio de pago de un gasto (nada si está sin especificar). */
+  function distintivoMedio(clave) {
+    if (!FP.medios.esValido(clave)) return null;
+    const m = FP.medios.info(clave);
+    return distintivo(m.etiqueta, 'neutro', m.icono);
+  }
+
   /** Barra de progreso accesible. `pct` puede superar 100 (tope excedido). */
   function barraProgreso(pct, severidad, etiqueta) {
     const valor = isFinite(pct) ? pct : 0;
@@ -306,6 +313,9 @@ FP.ui = (function () {
       el('span', null, U.fechaCorta(mov.fecha, op.mostrarAnio))
     ];
 
+    if (mov.tipo === 'gasto' && FP.medios.esValido(mov.medioPago)) {
+      meta.push(distintivoMedio(mov.medioPago));
+    }
     if (mov.recurrenteId || mov.recurrenteOrigen) {
       meta.push(distintivo('Generado por recurrente', 'info', '🔁'));
     }
@@ -341,6 +351,44 @@ FP.ui = (function () {
           : null
       ], 'Acciones del movimiento: ' + (mov.descripcion || 'movimiento')) : null
     ]);
+  }
+
+  /**
+   * Tarjeta informativa "Gastos por medio de pago" de un mes (Inicio y
+   * Presupuesto). Solo informa: no crea topes ni avisos. La suma de las filas
+   * es siempre el total de gastos del mes, el mismo que muestra el resumen.
+   * opciones = { nota }
+   */
+  function tarjetaMediosPago(periodo, opciones) {
+    const op = opciones || {};
+    const r = FP.dominio.resumen(periodo);
+    const filas = FP.dominio.desgloseMedioPago(periodo);
+
+    const nodos = [
+      el('h2', { class: 'seccion__titulo', style: 'margin-bottom:4px' }, 'Gastos por medio de pago'),
+      el('p', { class: 'texto-sm texto-apagado', style: 'margin-bottom:16px' },
+        U.periodoLegible(periodo) + ' · débito, crédito y efectivo')
+    ];
+
+    if (!r.gastos) {
+      nodos.push(el('p', { class: 'texto-sm texto-apagado' }, 'Aún no hay gastos registrados en este mes.'));
+    } else {
+      nodos.push(FP.graficos.barrasHorizontales({
+        maximo: r.gastos,
+        items: filas.map(function (f) {
+          return {
+            nombre: f.etiqueta, icono: f.icono, valor: f.total,
+            color: FP.medios.info(f.clave).color,
+            secundario: U.formatoPorcentaje(f.porcentaje, 0) + ' del gasto del mes'
+          };
+        })
+      }));
+      nodos.push(el('p', { class: 'texto-sm num mt-3', style: 'font-weight:700' },
+        'Total gastos del mes: ' + FP.dinero.formato(r.gastos)));
+    }
+
+    if (op.nota) nodos.push(el('p', { class: 'campo__ayuda mt-3' }, op.nota));
+    return el('section', { class: 'tarjeta', 'aria-label': 'Gastos por medio de pago' }, nodos);
   }
 
   /** Fila de categoría del presupuesto: tope, gastado, disponible y estado. */
@@ -551,6 +599,36 @@ FP.ui = (function () {
     return select;
   }
 
+  /**
+   * Selector segmentado del medio de pago de un gasto:
+   * Sin especificar / Débito / Crédito / Efectivo u otro.
+   * Devuelve el grupo; `grupo.valor()` entrega la clave o null.
+   */
+  function selectorMedioPago(valor, alCambiar) {
+    const grupo = el('div', { class: 'grupo-segmentado', role: 'group', 'aria-label': 'Medio de pago' });
+    let actual = FP.medios.esValido(valor) ? valor : '';
+
+    [['', 'Sin especificar']].concat(FP.medios.LISTA.map(function (m) {
+      return [m.clave, m.etiqueta];
+    })).forEach(function (par) {
+      grupo.appendChild(el('button', {
+        type: 'button',
+        dataset: { medio: par[0] },
+        'aria-pressed': String(actual === par[0]),
+        onclick: function () {
+          actual = par[0];
+          U.$$('button', grupo).forEach(function (x) {
+            x.setAttribute('aria-pressed', String(x.dataset.medio === actual));
+          });
+          if (alCambiar) alCambiar(actual || null);
+        }
+      }, par[1]));
+    });
+
+    grupo.valor = function () { return actual || null; };
+    return grupo;
+  }
+
   /** Selector segmentado Ingreso / Gasto. */
   function selectorTipo(valor, alCambiar) {
     const grupo = el('div', { class: 'grupo-segmentado', role: 'group', 'aria-label': 'Tipo de movimiento' });
@@ -578,9 +656,12 @@ FP.ui = (function () {
 
   return {
     dialogo: dialogo, confirmar: confirmar, toast: toast, anunciar: anunciar,
-    distintivo: distintivo, distintivoEstado: distintivoEstado, barraProgreso: barraProgreso,
+    distintivo: distintivo, distintivoEstado: distintivoEstado, distintivoMedio: distintivoMedio,
+    barraProgreso: barraProgreso,
     vacio: vacio, esqueleto: esqueleto, cabeceraSeccion: cabeceraSeccion, menuAcciones: menuAcciones,
     filaMovimiento: filaMovimiento, filaTope: filaTope, tarjetaAlerta: tarjetaAlerta,
-    campo: campo, campoMonto: campoMonto, selectorCategoria: selectorCategoria, selectorTipo: selectorTipo
+    tarjetaMediosPago: tarjetaMediosPago,
+    campo: campo, campoMonto: campoMonto, selectorCategoria: selectorCategoria, selectorTipo: selectorTipo,
+    selectorMedioPago: selectorMedioPago
   };
 })();

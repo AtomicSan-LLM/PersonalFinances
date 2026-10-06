@@ -79,6 +79,10 @@ FP.app = (function () {
 
   let rutaActual = 'inicio';
   let periodo = U.periodoActual();
+  /* Filtro de medio de pago compartido: 'todos' | 'debito' | 'credito' | 'efectivo' | 'sin-especificar'.
+     Se recuerda al cambiar de pantalla (no entre sesiones) y solo actúa donde la
+     vista declara `usaFiltroMedio` (Movimientos, Histórico y Comparar). */
+  let medioPago = 'todos';
   let paramsPendientes = null;
   let renderizando = false;
 
@@ -202,6 +206,23 @@ FP.app = (function () {
     pintar();
   }
 
+  function cambiarMedioPago(nuevo) {
+    const validos = ['todos'].concat(FP.medios.todos().map(function (m) { return m.clave; }));
+    if (validos.indexOf(nuevo) < 0) return;
+    medioPago = nuevo;
+    pintar();
+  }
+
+  function construirSelectorMedio() {
+    const sel = document.getElementById('input-medio');
+    if (!sel) return;
+    U.vaciar(sel);
+    sel.appendChild(el('option', { value: 'todos' }, 'Todos los gastos'));
+    FP.medios.todos().forEach(function (m) {
+      sel.appendChild(el('option', { value: m.clave }, m.icono + ' ' + m.etiqueta));
+    });
+  }
+
   function refrescar() { pintar(); }
 
   /* --------------------------------------------------------- pintar --- */
@@ -218,7 +239,9 @@ FP.app = (function () {
         params: paramsPendientes,
         irA: irA,
         refrescar: refrescar,
-        cambiarPeriodo: cambiarPeriodo
+        cambiarPeriodo: cambiarPeriodo,
+        medioPago: medioPago,
+        cambiarMedioPago: cambiarMedioPago
       };
       paramsPendientes = null;
 
@@ -233,6 +256,15 @@ FP.app = (function () {
       selector.hidden = !!vista.ocultarSelectorMes;
       const input = document.getElementById('input-mes');
       if (input.value !== periodo) input.value = periodo;
+
+      /* Filtro de medio de pago: solo donde la vista lo usa */
+      const selectorMedio = document.getElementById('selector-medio');
+      if (selectorMedio) {
+        selectorMedio.hidden = !vista.usaFiltroMedio;
+        const inputMedio = document.getElementById('input-medio');
+        if (inputMedio.value !== medioPago) inputMedio.value = medioPago;
+        selectorMedio.classList.toggle('selector-medio--activo', medioPago !== 'todos');
+      }
 
       /* Aviso de mes distinto al actual */
       const aviso = document.getElementById('aviso-mes');
@@ -273,6 +305,11 @@ FP.app = (function () {
     document.getElementById('input-mes').addEventListener('change', function (e) {
       cambiarPeriodo(e.target.value);
     });
+
+    /* Selector de medio de pago */
+    construirSelectorMedio();
+    const inputMedio = document.getElementById('input-medio');
+    if (inputMedio) inputMedio.addEventListener('change', function (e) { cambiarMedioPago(e.target.value); });
 
     U.$$('[data-mes]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -361,6 +398,8 @@ FP.app = (function () {
     refrescar: refrescar,
     cambiarPeriodo: cambiarPeriodo,
     periodoActivo: periodoActivo,
+    medioActivo: function () { return medioPago; },
+    cambiarMedioPago: cambiarMedioPago,
     aplicarTema: aplicarTema,
     esMovil: esMovil
   };

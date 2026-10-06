@@ -56,6 +56,27 @@ puesto para que no acabe subido por accidente.
 | **Comparar** | Dos meses enfrentados, indicador por indicador y categoría por categoría |
 | **Configuración** | Moneda, umbral de avisos, tema, copia de seguridad |
 
+### Medio de pago (débito, crédito o efectivo)
+
+Al registrar un **gasto** puedes indicar con qué lo pagaste: **Débito**, **Crédito**
+o **Efectivo u otro** (o dejarlo **Sin especificar**). Es una clasificación
+**adicional** a la categoría: no la reemplaza ni la cambia.
+
+- **Solo los gastos** lo tienen; los ingresos no.
+- **Es opcional.** Los movimientos anteriores a esta función quedan como «Sin
+  especificar» y se pueden editar cuando quieras. Los recurrentes también tienen
+  medio de pago y cada movimiento que generan lo hereda.
+- **Filtro compartido** en la cabecera («Medio de pago»): aparece en
+  **Movimientos, Histórico y Comparar** y se recuerda al moverte entre ellas. Al
+  filtrar por un medio solo se ven gastos.
+- **Análisis**: Inicio y Presupuesto muestran el gasto del mes por medio de pago;
+  Histórico añade columnas y un gráfico por medio; Comparar enfrenta dos meses
+  también por medio.
+- **Coherencia**: los topes, el total del mes, los totales por categoría y los avisos
+  siguen contando **todos** los gastos sin importar el medio. Ingresos, ahorro real y
+  meta de ahorro nunca se filtran. Los medios (con «Sin especificar») siempre suman
+  el total de gastos del mes. Es solo informativo: no hay topes ni avisos por medio.
+
 ### Atajos de teclado
 
 - **N** — registrar un movimiento
@@ -158,9 +179,9 @@ ejecuta.
 Abre **`pruebas.html`** en el navegador (o `http://localhost:8765/pruebas.html`
 si usaste el lanzador).
 
-Son 50 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
+Son 64 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
 tope, avisos, generación de recurrentes, reasignación de categorías,
-comparación de meses, validaciones y copia de seguridad. Verás en verde las que
+comparación de meses, medio de pago, validaciones y copia de seguridad. Verás en verde las que
 pasan y en rojo las que fallan.
 
 Úsalas si cambias alguna regla: te dicen enseguida si rompiste algo.

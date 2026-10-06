@@ -69,7 +69,8 @@ FP.formularios = (function () {
       monto: original ? original.monto : '',
       fecha: fechaInicial(),
       categoriaId: original ? original.categoriaId : '',
-      descripcion: original ? original.descripcion : ''
+      descripcion: original ? original.descripcion : '',
+      medioPago: original && FP.medios.esValido(original.medioPago) ? original.medioPago : null
     };
     let errores = {};
 
@@ -88,6 +89,7 @@ FP.formularios = (function () {
     });
 
     let selCategoria = null;
+    let campoMedio = null;
 
     function pintar() {
       U.vaciar(d.cuerpo);
@@ -97,6 +99,9 @@ FP.formularios = (function () {
         datos.tipo = t;
         datos.categoriaId = '';
         if (selCategoria) selCategoria.repintar(t, '');
+        /* El medio de pago solo existe para los gastos. */
+        if (t !== 'gasto') datos.medioPago = null;
+        if (campoMedio) campoMedio.hidden = t !== 'gasto';
       });
       d.cuerpo.appendChild(ui.campo({
         etiqueta: 'Tipo de movimiento',
@@ -145,6 +150,17 @@ FP.formularios = (function () {
         ui.campo({ etiqueta: 'Categoría', control: selCategoria, error: errores.categoriaId })
       ]);
       d.cuerpo.appendChild(fila);
+
+      /* Medio de pago (solo gastos): clasificación adicional a la categoría. */
+      campoMedio = ui.campo({
+        etiqueta: 'Medio de pago',
+        opcional: true,
+        control: ui.selectorMedioPago(datos.medioPago, function (v) { datos.medioPago = v; }),
+        error: errores.medioPago,
+        ayuda: 'No reemplaza la categoría: es una clasificación adicional del gasto.'
+      });
+      campoMedio.hidden = datos.tipo !== 'gasto';
+      d.cuerpo.appendChild(campoMedio);
 
       /* Descripción */
       const desc = el('input', {
@@ -195,6 +211,7 @@ FP.formularios = (function () {
         FP.store.actualizarMovimiento(original.id, {
           tipo: datos.tipo, monto: datos.monto, fecha: datos.fecha,
           categoriaId: datos.categoriaId, descripcion: datos.descripcion,
+          medioPago: datos.medioPago,
           revisar: false
         });
         ui.toast('Movimiento actualizado.', { tipo: 'exito' });
@@ -575,6 +592,7 @@ FP.formularios = (function () {
       monto: original ? original.monto : '',
       descripcion: original ? original.descripcion : '',
       categoriaId: original ? original.categoriaId : '',
+      medioPago: original && FP.medios.esValido(original.medioPago) ? original.medioPago : null,
       diaMes: original ? original.diaMes : 1,
       desde: original ? original.desde : U.periodoActual(),
       hasta: original ? (original.hasta || '') : '',
@@ -583,6 +601,7 @@ FP.formularios = (function () {
     };
     let errores = {};
     let selCategoria = null;
+    let campoMedioRec = null;
 
     const d = ui.dialogo({
       titulo: editando ? 'Editar movimiento recurrente' : 'Nuevo movimiento recurrente',
@@ -600,6 +619,8 @@ FP.formularios = (function () {
         datos.tipo = t;
         datos.categoriaId = '';
         if (selCategoria) selCategoria.repintar(t, '');
+        if (t !== 'gasto') datos.medioPago = null;
+        if (campoMedioRec) campoMedioRec.hidden = t !== 'gasto';
       });
       d.cuerpo.appendChild(ui.campo({ etiqueta: 'Tipo', control: grupoTipo }));
 
@@ -637,6 +658,16 @@ FP.formularios = (function () {
           ayuda: Number(datos.diaMes) > 28 ? 'En los meses más cortos se usará el último día.' : null
         })
       ]));
+
+      campoMedioRec = ui.campo({
+        etiqueta: 'Medio de pago',
+        opcional: true,
+        control: ui.selectorMedioPago(datos.medioPago, function (v) { datos.medioPago = v; }),
+        error: errores.medioPago,
+        ayuda: 'Los movimientos que se generen heredarán este medio de pago.'
+      });
+      campoMedioRec.hidden = datos.tipo !== 'gasto';
+      d.cuerpo.appendChild(campoMedioRec);
 
       const desde = el('input', {
         type: 'month', value: datos.desde,
@@ -682,6 +713,7 @@ FP.formularios = (function () {
       const payload = {
         tipo: datos.tipo, monto: datos.monto, descripcion: datos.descripcion,
         categoriaId: datos.categoriaId, diaMes: datos.diaMes,
+        medioPago: datos.tipo === 'gasto' ? datos.medioPago : null,
         desde: datos.desde, hasta: datos.sinFin ? null : (datos.hasta || null),
         montoVariable: datos.montoVariable
       };

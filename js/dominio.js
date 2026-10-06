@@ -38,6 +38,11 @@ FP.dominio = (function () {
     if (f.categoriaId && f.categoriaId !== 'todas') {
       lista = lista.filter(function (m) { return m.categoriaId === f.categoriaId; });
     }
+    /* Medio de pago: solo los gastos lo tienen, así que filtrar por un medio
+       deja fuera los ingresos. */
+    if (f.medioPago && f.medioPago !== 'todos') {
+      lista = lista.filter(function (m) { return FP.medios.de(m) === f.medioPago; });
+    }
     if (f.texto) {
       const q = U.normalizar(f.texto);
       lista = lista.filter(function (m) {
@@ -58,8 +63,11 @@ FP.dominio = (function () {
   function resumen(periodo) {
     const movs = movimientosDe(periodo);
     let ingresos = 0, gastos = 0;
+    const gastosPorMedio = {};
+    FP.medios.todos().forEach(function (x) { gastosPorMedio[x.clave] = 0; });
     movs.forEach(function (m) {
-      if (m.tipo === 'ingreso') ingresos += m.monto; else gastos += m.monto;
+      if (m.tipo === 'ingreso') ingresos += m.monto;
+      else { gastos += m.monto; gastosPorMedio[FP.medios.de(m)] += m.monto; }
     });
 
     const ahorroReal = ingresos - gastos;
@@ -70,6 +78,7 @@ FP.dominio = (function () {
       periodo: periodo,
       ingresos: ingresos,
       gastos: gastos,
+      gastosPorMedio: gastosPorMedio,
       ahorroReal: ahorroReal,
       metaAhorro: meta,
       hayMeta: meta > 0,
@@ -82,14 +91,38 @@ FP.dominio = (function () {
   }
 
   /** FR-012 — Total por categoría en el mes. Devuelve un Map categoriaId → total. */
-  function totalesPorCategoria(periodo, tipo) {
+  function totalesPorCategoria(periodo, tipo, medio) {
     const mapa = new Map();
     movimientosDe(periodo).forEach(function (m) {
       if (tipo && m.tipo !== tipo) return;
+      if (medio && medio !== 'todos' && FP.medios.de(m) !== medio) return;
       const k = m.categoriaId || 'sin-categoria';
       mapa.set(k, (mapa.get(k) || 0) + m.monto);
     });
     return mapa;
+  }
+
+  /** Gasto del mes según el medio elegido ('todos' = el total de gastos). */
+  function gastosSegunMedio(resumenMes, medio) {
+    if (!medio || medio === 'todos') return resumenMes.gastos;
+    return resumenMes.gastosPorMedio[medio] || 0;
+  }
+
+  /**
+   * Gasto del mes repartido por medio de pago. La suma de `total` de todas
+   * las filas es SIEMPRE igual al total de gastos del mes (incluye
+   * "Sin especificar"), de modo que nunca se contradice con el resumen.
+   */
+  function desgloseMedioPago(periodo) {
+    const r = resumen(periodo);
+    return FP.medios.todos().map(function (x) {
+      const total = r.gastosPorMedio[x.clave] || 0;
+      return {
+        clave: x.clave, etiqueta: x.etiqueta, icono: x.icono,
+        total: total,
+        porcentaje: r.gastos > 0 ? (total / r.gastos) * 100 : 0
+      };
+    });
   }
 
   /* ==================================================== presupuesto === */
@@ -389,6 +422,7 @@ FP.dominio = (function () {
               tipo: rec.tipo,
               descripcion: rec.descripcion,
               categoriaId: rec.categoriaId,
+              medioPago: FP.medios.normalizar(rec.tipo, rec.medioPago),
               recurrenteId: rec.id,
               revisar: !!rec.montoVariable,
               creadoEn: new Date().toISOString()
@@ -464,15 +498,29 @@ FP.dominio = (function () {
   /* ======================================================= comparar === */
 
   /** FR-027 / PA-11 — Comparación de dos meses. */
-  function comparar(periodoA, periodoB) {
+  function comparar(periodoA, periodoB, medio) {
     const a = resumen(periodoA), b = resumen(periodoB);
+    const filtrando = !!medio && medio !== 'todos';
 
-    const indicadores = [
+    /* Ingresos, ahorro real y meta SIEMPRE usan todos los gastos: así no se
+       contradicen con el resto de la aplicación. Con filtro activo se añade
+       una fila de gastos acotada al medio elegido. */
+    const base = [
       { clave: 'ingresos', etiqueta: 'Ingresos', a: a.ingresos, b: b.ingresos, mejorEs: 'mas' },
-      { clave: 'gastos', etiqueta: 'Gastos', a: a.gastos, b: b.gastos, mejorEs: 'menos' },
+      { clave: 'gastos', etiqueta: 'Gastos', a: a.gastos, b: b.gastos, mejorEs: 'menos' }
+    ];
+    if (filtrando) {
+      base.push({
+        clave: 'gastosMedio', etiqueta: 'Gastos · ' + FP.medios.info(medio).etiqueta,
+        a: gastosSegunMedio(a, medio), b: gastosSegunMedio(b, medio), mejorEs: 'menos'
+      });
+    }
+    base.push(
       { clave: 'ahorro', etiqueta: 'Ahorro real', a: a.ahorroReal, b: b.ahorroReal, mejorEs: 'mas' },
       { clave: 'meta', etiqueta: 'Meta de ahorro', a: a.metaAhorro, b: b.metaAhorro, mejorEs: 'neutro' }
-    ].map(function (ind) {
+    );
+
+    const indicadores = base.map(function (ind) {
       ind.variacion = U.variacion(ind.a, ind.b);
       ind.delta = ind.b - ind.a;
       if (ind.mejorEs === 'neutro' || ind.delta === 0) ind.tendencia = 'igual';
@@ -490,8 +538,8 @@ FP.dominio = (function () {
     };
 
     /* Comparación por categoría de gasto. */
-    const totA = totalesPorCategoria(periodoA, 'gasto');
-    const totB = totalesPorCategoria(periodoB, 'gasto');
+    const totA = totalesPorCategoria(periodoA, 'gasto', medio);
+    const totB = totalesPorCategoria(periodoB, 'gasto', medio);
     const ids = new Set();
     totA.forEach(function (_v, k) { ids.add(k); });
     totB.forEach(function (_v, k) { ids.add(k); });
@@ -512,7 +560,20 @@ FP.dominio = (function () {
     });
     categorias.sort(function (x, y) { return Math.abs(y.delta) - Math.abs(x.delta); });
 
-    return { a: a, b: b, indicadores: indicadores, cumplimiento: cumplimiento, categorias: categorias };
+    /* Gasto por medio de pago, siempre completo (suma = gastos de cada mes). */
+    const medios = FP.medios.todos().map(function (x) {
+      const va = a.gastosPorMedio[x.clave] || 0, vb = b.gastosPorMedio[x.clave] || 0;
+      return {
+        clave: x.clave, etiqueta: x.etiqueta, icono: x.icono,
+        a: va, b: vb, delta: vb - va, variacion: U.variacion(va, vb),
+        tendencia: vb === va ? 'igual' : (vb < va ? 'mejor' : 'peor')
+      };
+    });
+
+    return {
+      a: a, b: b, medio: filtrando ? medio : 'todos',
+      indicadores: indicadores, cumplimiento: cumplimiento, categorias: categorias, medios: medios
+    };
   }
 
   /* ======================================================= validación == */
@@ -558,6 +619,11 @@ FP.dominio = (function () {
       errores.descripcion = 'Escribe una descripción.';
     }
 
+    /* El medio de pago es opcional y solo aplica a gastos. */
+    if (datos.tipo === 'gasto' && datos.medioPago && !FP.medios.esValido(datos.medioPago)) {
+      errores.medioPago = 'Elige débito, crédito o efectivo.';
+    }
+
     return errores;
   }
 
@@ -588,6 +654,9 @@ FP.dominio = (function () {
     if (datos.hasta && datos.desde && datos.hasta < datos.desde) {
       errores.hasta = 'El mes final no puede ser anterior al inicial.';
     }
+    if (datos.tipo === 'gasto' && datos.medioPago && !FP.medios.esValido(datos.medioPago)) {
+      errores.medioPago = 'Elige débito, crédito o efectivo.';
+    }
     return errores;
   }
 
@@ -596,6 +665,7 @@ FP.dominio = (function () {
   return {
     movimientosDe: movimientosDe, filtrarMovimientos: filtrarMovimientos, ordenarRecientes: ordenarRecientes,
     resumen: resumen, totalesPorCategoria: totalesPorCategoria,
+    desgloseMedioPago: desgloseMedioPago, gastosSegunMedio: gastosSegunMedio,
     estadoTopes: estadoTopes, estadoDeTope: estadoDeTope, estadoDeCategoria: estadoDeCategoria,
     umbral: umbral, ETIQUETAS_ESTADO: ETIQUETAS_ESTADO, SEVERIDAD_ESTADO: SEVERIDAD_ESTADO,
     coherenciaPresupuesto: coherenciaPresupuesto,

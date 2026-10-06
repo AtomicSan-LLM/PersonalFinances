@@ -30,14 +30,14 @@ FP.vistas.movimientos = (function () {
 
     const lista = el('div');
 
-    cont.appendChild(barraFiltros(periodo, function () { pintar(lista, periodo, ctx); }));
+    cont.appendChild(barraFiltros(periodo, ctx, function () { pintar(lista, periodo, ctx); }));
     cont.appendChild(lista);
     pintar(lista, periodo, ctx);
   }
 
   /* ------------------------------------------------------- Filtros ---- */
 
-  function barraFiltros(periodo, alCambiar) {
+  function barraFiltros(periodo, ctx, alCambiar) {
     const grupo = el('div', { class: 'grupo-segmentado', role: 'group', 'aria-label': 'Filtrar por tipo' });
     [['todos', 'Todos'], ['ingreso', 'Ingresos'], ['gasto', 'Gastos']].forEach(function (par) {
       grupo.appendChild(el('button', {
@@ -77,11 +77,12 @@ FP.vistas.movimientos = (function () {
       type: 'button', class: 'btn',
       onclick: function () {
         filtros.tipo = 'todos'; filtros.categoriaId = 'todas'; filtros.texto = '';
-        FP.app.refrescar();
+        if (ctx.medioPago !== 'todos') ctx.cambiarMedioPago('todos'); else FP.app.refrescar();
       }
     }, 'Limpiar filtros');
 
-    const hayFiltro = filtros.tipo !== 'todos' || filtros.categoriaId !== 'todas' || filtros.texto;
+    const hayFiltro = filtros.tipo !== 'todos' || filtros.categoriaId !== 'todas' || filtros.texto ||
+      ctx.medioPago !== 'todos';
 
     return el('div', { class: 'filtros' }, [
       ui.campo({ etiqueta: 'Tipo', control: grupo }),
@@ -97,7 +98,14 @@ FP.vistas.movimientos = (function () {
 
   function pintar(cont, periodo, ctx) {
     U.vaciar(cont);
-    const movs = FP.dominio.filtrarMovimientos(periodo, filtros);
+    const medio = ctx.medioPago || 'todos';
+    const movs = FP.dominio.filtrarMovimientos(periodo, Object.assign({}, filtros, { medioPago: medio }));
+
+    if (medio !== 'todos') {
+      cont.appendChild(el('div', { class: 'aviso-medio' },
+        FP.medios.info(medio).icono + ' Mostrando solo gastos con medio de pago: ' + FP.medios.info(medio).etiqueta +
+        '. Los ingresos no tienen medio de pago, por eso no aparecen.'));
+    }
 
     const ingresos = U.suma(movs.filter(function (m) { return m.tipo === 'ingreso'; }), function (m) { return m.monto; });
     const gastos = U.suma(movs.filter(function (m) { return m.tipo === 'gasto'; }), function (m) { return m.monto; });
@@ -106,13 +114,17 @@ FP.vistas.movimientos = (function () {
       el('p', { class: 'texto-sm texto-apagado' },
         movs.length === 0 ? 'Ningún movimiento coincide'
           : movs.length + ' movimiento' + (movs.length === 1 ? '' : 's')),
-      el('p', { class: 'texto-sm num' }, [
-        el('span', { class: 'monto--ingreso', style: 'font-weight:700' }, '+' + FP.dinero.formato(ingresos)),
-        el('span', { class: 'texto-apagado' }, '   ·   '),
-        el('span', { class: 'monto--gasto', style: 'font-weight:700' }, '-' + FP.dinero.formato(gastos)),
-        el('span', { class: 'texto-apagado' }, '   ·   '),
-        el('span', { style: 'font-weight:700' }, FP.dinero.formatoSaldo(ingresos - gastos))
-      ])
+      medio !== 'todos'
+        ? el('p', { class: 'texto-sm num' }, [
+          el('span', { class: 'monto--gasto', style: 'font-weight:700' }, '-' + FP.dinero.formato(gastos))
+        ])
+        : el('p', { class: 'texto-sm num' }, [
+          el('span', { class: 'monto--ingreso', style: 'font-weight:700' }, '+' + FP.dinero.formato(ingresos)),
+          el('span', { class: 'texto-apagado' }, '   ·   '),
+          el('span', { class: 'monto--gasto', style: 'font-weight:700' }, '-' + FP.dinero.formato(gastos)),
+          el('span', { class: 'texto-apagado' }, '   ·   '),
+          el('span', { style: 'font-weight:700' }, FP.dinero.formatoSaldo(ingresos - gastos))
+        ])
     ]));
 
     const tarjeta = el('div', { class: 'tarjeta' });
@@ -131,7 +143,7 @@ FP.vistas.movimientos = (function () {
           etiqueta: 'Limpiar filtros',
           alHacerClic: function () {
             filtros.tipo = 'todos'; filtros.categoriaId = 'todas'; filtros.texto = '';
-            FP.app.refrescar();
+            if (ctx.medioPago !== 'todos') ctx.cambiarMedioPago('todos'); else FP.app.refrescar();
           }
         } : {
           etiqueta: '＋ Registrar movimiento',
@@ -157,6 +169,14 @@ FP.vistas.movimientos = (function () {
 
   /* --------------------------------------------------------- Tabla ---- */
 
+  /** Gastos: el medio elegido o "Sin especificar". Ingresos: no aplica. */
+  function celdaMedio(m) {
+    if (m.tipo !== 'gasto') return el('span', { class: 'texto-apagado', title: 'Los ingresos no tienen medio de pago' }, '—');
+    const clave = FP.medios.de(m);
+    if (clave === FP.medios.SIN_ESPECIFICAR.clave) return el('span', { class: 'texto-apagado texto-sm' }, 'Sin especificar');
+    return ui.distintivoMedio(clave);
+  }
+
   function tabla(movs, ctx) {
     const cuerpo = el('tbody');
 
@@ -173,6 +193,7 @@ FP.vistas.movimientos = (function () {
           cat && cat.icono ? el('span', { 'aria-hidden': 'true' }, cat.icono + ' ') : null,
           cat ? cat.nombre : 'Sin categoría'
         ]),
+        el('td', { class: 'nowrap' }, celdaMedio(m)),
         el('td', null, [
           el('div', null, m.descripcion || el('span', { class: 'texto-apagado' }, '—')),
           (m.recurrenteId || m.recurrenteOrigen || m.revisar || esFutura)
@@ -209,6 +230,7 @@ FP.vistas.movimientos = (function () {
             el('th', { scope: 'col' }, 'Fecha'),
             el('th', { scope: 'col' }, 'Tipo'),
             el('th', { scope: 'col' }, 'Categoría'),
+            el('th', { scope: 'col' }, 'Medio de pago'),
             el('th', { scope: 'col' }, 'Descripción'),
             el('th', { scope: 'col', class: 'num' }, 'Monto'),
             el('th', { scope: 'col' }, el('span', { class: 'visualmente-oculto' }, 'Acciones'))
@@ -223,6 +245,7 @@ FP.vistas.movimientos = (function () {
     titulo: 'Movimientos',
     icono: '📋',
     enNavegacion: true,
+    usaFiltroMedio: true,
     filtros: filtros,
     subtitulo: function (ctx) {
       return 'Ingresos y gastos de ' + U.periodoLegible(ctx.periodo);

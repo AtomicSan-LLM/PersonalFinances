@@ -367,3 +367,45 @@ FP.dinero = (function () {
     limpiarCache: limpiarCache
   };
 })();
+
+/* ==========================================================================
+   Medios de pago — dimensión adicional de los GASTOS (no reemplaza la
+   categoría). Valores: débito, crédito, efectivo u otro; o sin especificar
+   (movimientos anteriores a esta función o dejados en blanco). Los ingresos
+   no tienen medio de pago.
+   ========================================================================== */
+FP.medios = (function () {
+  'use strict';
+
+  const LISTA = [
+    { clave: 'debito', etiqueta: 'Débito', icono: '🏧', color: 'var(--medio-debito)' },
+    { clave: 'credito', etiqueta: 'Crédito', icono: '💳', color: 'var(--medio-credito)' },
+    { clave: 'efectivo', etiqueta: 'Efectivo u otro', icono: '💵', color: 'var(--medio-efectivo)' }
+  ];
+  const SIN_ESPECIFICAR = { clave: 'sin-especificar', etiqueta: 'Sin especificar', icono: '❔', color: 'var(--medio-sin)' };
+
+  function esValido(m) { return LISTA.some(function (x) { return x.clave === m; }); }
+
+  /** Lo que se guarda: solo los gastos llevan medio; cualquier otra cosa es null. */
+  function normalizar(tipo, medio) {
+    return (tipo === 'gasto' && esValido(medio)) ? medio : null;
+  }
+
+  /** Todas las claves por las que se puede filtrar/agrupar, incluida "sin especificar". */
+  function todos() { return LISTA.concat([SIN_ESPECIFICAR]); }
+
+  function info(clave) {
+    return todos().find(function (x) { return x.clave === clave; }) || SIN_ESPECIFICAR;
+  }
+
+  /** Clave efectiva de un movimiento: null si no es gasto. */
+  function de(mov) {
+    if (!mov || mov.tipo !== 'gasto') return null;
+    return esValido(mov.medioPago) ? mov.medioPago : SIN_ESPECIFICAR.clave;
+  }
+
+  return {
+    LISTA: LISTA, SIN_ESPECIFICAR: SIN_ESPECIFICAR,
+    esValido: esValido, normalizar: normalizar, todos: todos, info: info, de: de
+  };
+})();
