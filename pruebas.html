@@ -1002,6 +1002,35 @@
     cierto(isNaN(M.tasaEquivalente(0.01, 0)), 'factor cero');
   });
 
+  prueba('Plan de ahorro: sin rentabilidad es el objetivo dividido entre los meses', function () {
+    const p = M.planDeAhorro(1200000, 12, 0);
+    igual(p.cuota, 100000);
+    igual(p.aportado, 1200000);
+    cercano(p.acumulado, 1200000, 0.000001);
+    igual(p.rendimientos, 0, 'sin rentabilidad no hay rendimientos');
+  });
+
+  prueba('Plan de ahorro: con 12 % EA a 12 meses, cuota = objetivo × i / 0,12 (porque (1+i)^12 = 1,12)', function () {
+    const p = M.planDeAhorro(1200000, 12, 0.12);
+    const i = Math.pow(1.12, 1 / 12) - 1;
+    igual(p.cuota, Math.ceil(1200000 * i / 0.12), 'cuota');
+    cierto(p.cuota < 100000, 'con rentabilidad se ahorra menos que sin ella');
+    cierto(p.acumulado >= 1200000, 'redondear hacia arriba nunca deja la meta corta');
+    cierto(p.rendimientos > 0, 'hay rendimientos');
+    cercano(p.rendimientos, p.acumulado - p.aportado, 0.000001);
+  });
+
+  prueba('Plan de ahorro: valida objetivo, meses y rentabilidad', function () {
+    cierto('objetivo' in M.planDeAhorro(0, 12, 0).errores, 'objetivo cero');
+    cierto('objetivo' in M.planDeAhorro(NaN, 12, 0).errores, 'objetivo no numérico');
+    cierto('meses' in M.planDeAhorro(1000, 0, 0).errores, 'cero meses');
+    cierto('meses' in M.planDeAhorro(1000, 6.5, 0).errores, 'meses con decimales');
+    cierto('meses' in M.planDeAhorro(1000, 601, 0).errores, 'más de 600 meses');
+    cierto('rentabilidad' in M.planDeAhorro(1000, 12, -0.01).errores, 'rentabilidad negativa');
+    cierto('rentabilidad' in M.planDeAhorro(1000, 12, 1.5).errores, 'rentabilidad superior al 100 %');
+    igual(Object.keys(M.planDeAhorro(1000, 12, 0.05).errores).length, 0, 'datos válidos sin errores');
+  });
+
   /* ============================================================ Informe == */
 
   limpiar();

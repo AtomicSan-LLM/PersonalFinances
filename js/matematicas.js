@@ -63,7 +63,39 @@ FP.matematicas = (function () {
     return tasaEquivalente(ea, 1 / periodosPorAnio);
   }
 
+  /**
+   * Plan de ahorro mensual para alcanzar un objetivo en `meses`, con una
+   * rentabilidad efectiva anual `ea` (fracción: 0.07 = 7 %).
+   * Supone un ahorro al final de cada mes y rentabilidad constante.
+   * La cuota se redondea hacia arriba al peso entero: así la meta no queda corta.
+   * Devuelve { errores } si algo es inválido; si no, { errores: {}, cuota, aportado,
+   * acumulado, rendimientos, tasaMensual }.
+   */
+  function planDeAhorro(objetivo, meses, ea) {
+    const errores = {};
+    if (!(typeof objetivo === 'number' && isFinite(objetivo) && objetivo > 0)) {
+      errores.objetivo = 'Ingresa un objetivo mayor que cero.';
+    }
+    if (!(typeof meses === 'number' && Math.floor(meses) === meses && meses >= 1 && meses <= 600)) {
+      errores.meses = 'Ingresa un número entero de meses, entre 1 y 600.';
+    }
+    if (!(typeof ea === 'number' && isFinite(ea) && ea >= 0 && ea <= 1)) {
+      errores.rentabilidad = 'Ingresa un porcentaje entre 0 y 100.';
+    }
+    if (Object.keys(errores).length) return { errores: errores };
+
+    const i = tasaPeriodicaDesdeEA(ea, 12);
+    const cuota = Math.ceil(cuotaParaMeta(objetivo, i, meses));
+    const aportado = cuota * meses;
+    const acumulado = valorFuturoAnualidad(cuota, i, meses);
+    return {
+      errores: {}, cuota: cuota, aportado: aportado, acumulado: acumulado,
+      rendimientos: Math.max(0, acumulado - aportado), tasaMensual: i
+    };
+  }
+
   return {
+    planDeAhorro: planDeAhorro,
     valorFuturoAnualidad: valorFuturoAnualidad,
     valorPresenteAnualidad: valorPresenteAnualidad,
     cuotaParaMeta: cuotaParaMeta,

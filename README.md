@@ -48,7 +48,7 @@ puesto para que no acabe subido por accidente.
 |---|---|
 | **Inicio** | Responde «¿cómo voy este mes?»: ingresos, gastos, ahorro real, meta, avisos, presupuesto y últimos movimientos |
 | **Movimientos** | Consultar, filtrar, buscar, editar y eliminar movimientos del mes |
-| **Presupuesto** | Meta de ahorro y topes de gasto por categoría, con estado de cada uno |
+| **Presupuesto** | Meta de ahorro, calculadora de cuánto ahorrar al mes para un objetivo y topes de gasto por categoría, con estado de cada uno |
 | **Histórico** | Tabla mensual y gráficos de evolución de ingresos, gastos y ahorro |
 | **Alertas** | Avisos de cercanía y superación de topes, accionables |
 | **Recurrentes** | Movimientos que se repiten cada mes (salario, arriendo…) |
@@ -196,7 +196,7 @@ ejecuta.
 Abre **`pruebas.html`** en el navegador (o `http://localhost:8765/pruebas.html`
 si usaste el lanzador).
 
-Son 80 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
+Son 83 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
 tope, avisos, generación de recurrentes, reasignación de categorías,
 comparación de meses, medio de pago, transferencias, validaciones, copia de
 seguridad y fórmulas financieras (estas últimas comparadas con ejemplos
