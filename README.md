@@ -170,6 +170,7 @@ finanzas-personales/
     ├── util.js             Fechas, periodos, formato de dinero
     ├── store.js            Estado, persistencia y operaciones sobre los datos
     ├── dominio.js          Reglas de negocio (sin tocar el DOM)
+    ├── matematicas.js      Fórmulas financieras (anualidades, tasas); verificadas contra el libro de Vidarte
     ├── graficos.js         Gráficos en SVG, sin librerías
     ├── ui.js               Componentes reutilizables
     ├── formularios.js      Diálogos de alta y edición
@@ -195,9 +196,11 @@ ejecuta.
 Abre **`pruebas.html`** en el navegador (o `http://localhost:8765/pruebas.html`
 si usaste el lanzador).
 
-Son 72 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
+Son 80 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
 tope, avisos, generación de recurrentes, reasignación de categorías,
-comparación de meses, medio de pago, transferencias, validaciones y copia de seguridad. Verás en verde las que
+comparación de meses, medio de pago, transferencias, validaciones, copia de
+seguridad y fórmulas financieras (estas últimas comparadas con ejemplos
+resueltos del libro de Vidarte, no con el propio código). Verás en verde las que
 pasan y en rojo las que fallan.
 
 Úsalas si cambias alguna regla: te dicen enseguida si rompiste algo.
