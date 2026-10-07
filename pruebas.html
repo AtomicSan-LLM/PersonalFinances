@@ -28,6 +28,7 @@
 <script src="js/store.js"></script>
 <script src="js/dominio.js"></script>
 <script src="js/matematicas.js"></script>
+<script src="js/calendario.js"></script>
 <script>
 (function () {
   'use strict';
@@ -1106,6 +1107,107 @@
     cierto(t.indexOf('3') >= 0 && t.indexOf('9') >= 0, 'incluye los días: ' + t);
     cierto(t.toLowerCase().indexOf('febrero') >= 0, 'incluye el mes: ' + t);
     igual(U.rangoLegible('2026-02', { desde: 4, hasta: 4 }).indexOf(' al ') < 0, true, 'un solo día se nombra sin "al"');
+  });
+
+  /* =============================================== Calendario (lógica) == */
+
+  const C = FP.calendario;
+
+  prueba('Calendario: la semana empieza en lunes y septiembre de 2026 arranca en martes', function () {
+    const c = C.cuadricula('2026-09');
+    igual(c.desfase, 1, 'el 1 de septiembre de 2026 es martes');
+    igual(c.semanas[0][0], null, 'el lunes anterior queda vacío');
+    igual(c.semanas[0][1], 1, 'el martes es el día 1');
+    igual(c.dias, 30);
+  });
+
+  prueba('Calendario: febrero de 2026 empieza en domingo (desfase 6) y tiene 28 días', function () {
+    const c = C.cuadricula('2026-02');
+    igual(c.desfase, 6);
+    igual(c.dias, 28);
+    igual(c.semanas[0][6], 1, 'el domingo es el día 1');
+  });
+
+  prueba('Calendario: febrero bisiesto de 2028 tiene 29 días', function () {
+    igual(C.cuadricula('2028-02').dias, 29);
+  });
+
+  prueba('Calendario: cada semana tiene 7 celdas y todos los días aparecen una vez, en orden', function () {
+    ['2026-02', '2026-03', '2026-09', '2026-10', '2028-02'].forEach(function (p) {
+      const c = C.cuadricula(p);
+      c.semanas.forEach(function (s) { igual(s.length, 7, p + ': semana de 7 celdas'); });
+      const dias = [].concat.apply([], c.semanas).filter(function (x) { return x !== null; });
+      igual(dias.length, c.dias, p + ': cantidad de días');
+      dias.forEach(function (d, i) { igual(d, i + 1, p + ': orden'); });
+    });
+  });
+
+  prueba('Calendario: la cuadrícula genérica muestra los días 1 al 31 sin desfase', function () {
+    const c = C.cuadriculaDias(31);
+    igual(c.desfase, 0);
+    igual(c.dias, 31);
+    igual(c.semanas[0][0], 1);
+    igual(c.semanas[4][2], 31, 'el 31 cae en la quinta fila, tercera columna');
+  });
+
+  prueba('Calendario: primer toque marca el inicio y el segundo cierra el rango', function () {
+    let e = C.seleccionar({ desde: 1, hasta: 30, ancla: null }, 4);
+    igual(e.desde, 4); igual(e.hasta, 4); igual(e.ancla, 4, 'queda esperando el día final');
+    e = C.seleccionar(e, 9);
+    igual(e.desde, 4); igual(e.hasta, 9); igual(e.ancla, null, 'rango cerrado');
+  });
+
+  prueba('Calendario: si el segundo toque es anterior al primero, el rango se ordena', function () {
+    let e = C.seleccionar({ desde: 1, hasta: 30, ancla: null }, 20);
+    e = C.seleccionar(e, 7);
+    igual(e.desde, 7); igual(e.hasta, 20);
+  });
+
+  prueba('Calendario: tocar el mismo día dos veces elige un solo día', function () {
+    let e = C.seleccionar({ desde: 1, hasta: 30, ancla: null }, 12);
+    e = C.seleccionar(e, 12);
+    igual(e.desde, 12); igual(e.hasta, 12); igual(e.ancla, null);
+  });
+
+  prueba('Calendario: un tercer toque empieza una selección nueva', function () {
+    let e = C.seleccionar({ desde: 1, hasta: 30, ancla: null }, 3);
+    e = C.seleccionar(e, 8);
+    e = C.seleccionar(e, 15);
+    igual(e.desde, 15); igual(e.hasta, 15); igual(e.ancla, 15);
+  });
+
+  prueba('Calendario: la vista previa al pasar el cursor solo actúa con un inicio pendiente', function () {
+    let v = C.vista({ desde: 4, hasta: 4, ancla: 4 }, 10);
+    igual(v.desde, 4); igual(v.hasta, 10);
+    v = C.vista({ desde: 4, hasta: 4, ancla: 4 }, 2);
+    igual(v.desde, 2); igual(v.hasta, 4, 'hacia atrás también');
+    v = C.vista({ desde: 5, hasta: 9, ancla: null }, 20);
+    igual(v.desde, 5); igual(v.hasta, 9, 'sin inicio pendiente no cambia');
+  });
+
+  prueba('Calendario: los atajos respetan los días del mes', function () {
+    const feb = C.atajos(28);
+    igual(feb[0].desde, 1); igual(feb[0].hasta, 28, 'mes completo');
+    const q2 = feb.find(function (a) { return a.id === 'q2'; });
+    igual(q2.desde, 16); igual(q2.hasta, 28, 'segunda quincena llega al último día');
+    const q1 = feb.find(function (a) { return a.id === 'q1'; });
+    igual(q1.desde, 1); igual(q1.hasta, 15);
+    const gen = C.atajos(31).find(function (a) { return a.id === 'q2'; });
+    igual(gen.hasta, 31);
+  });
+
+  prueba('Calendario: etiqueta del rango legible', function () {
+    igual(C.etiquetaRango(null), 'Mes completo');
+    igual(C.etiquetaRango({ desde: 4, hasta: 4 }), 'Día 4');
+    igual(C.etiquetaRango({ desde: 1, hasta: 15 }), 'Del 1 al 15');
+  });
+
+  prueba('Calendario: los 12 meses de un año y la etiqueta de un periodo', function () {
+    const m = C.mesesDelAnio(2026);
+    igual(m.length, 12);
+    igual(m[0], '2026-01'); igual(m[8], '2026-09'); igual(m[11], '2026-12');
+    igual(C.etiquetaMes('2026-09'), 'septiembre de 2026');
+    igual(C.etiquetaMes('2026-01'), 'enero de 2026');
   });
 
   /* ============================================ Matemáticas financieras == */

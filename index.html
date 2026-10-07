@@ -56,17 +56,20 @@
             <select id="input-medio" class="selector-medio__input"></select>
           </div>
           <div class="selector-dias" id="selector-dias" role="group" aria-label="Rango de días del mes" hidden>
-            <label class="selector-dias__etiqueta" for="input-dia-desde">Del día</label>
-            <input type="number" id="input-dia-desde" class="selector-dias__input" min="1" max="31" step="1" inputmode="numeric" aria-describedby="aviso-dias">
-            <label class="selector-dias__etiqueta" for="input-dia-hasta">al</label>
-            <input type="number" id="input-dia-hasta" class="selector-dias__input" min="1" max="31" step="1" inputmode="numeric" aria-describedby="aviso-dias">
-            <button type="button" class="btn btn--sm btn--fantasma" data-accion="mes-completo" hidden>Mes completo</button>
+            <button type="button" class="selector-dias__valor" id="btn-rango" aria-haspopup="dialog">
+              <span aria-hidden="true">📅</span>
+              <span id="rango-etiqueta">Mes completo</span>
+              <span class="selector-flecha" aria-hidden="true">▾</span>
+            </button>
+            <button type="button" class="btn-icono selector-dias__quitar" data-accion="mes-completo" aria-label="Quitar el rango y ver el mes completo" hidden>✕</button>
           </div>
         </div>
         <div class="selector-mes" id="selector-mes" role="group" aria-label="Selector de mes">
           <button type="button" class="btn-icono" data-mes="anterior" aria-label="Mes anterior">‹</button>
-          <label class="visualmente-oculto" for="input-mes">Mes consultado</label>
-          <input type="month" id="input-mes" class="selector-mes__input">
+          <button type="button" class="selector-mes__valor" id="btn-mes" aria-haspopup="dialog">
+            <span id="mes-etiqueta">septiembre de 2026</span>
+            <span class="selector-flecha" aria-hidden="true">▾</span>
+          </button>
           <button type="button" class="btn-icono" data-mes="siguiente" aria-label="Mes siguiente">›</button>
         </div>
         <button type="button" class="btn btn--primario btn--registrar" data-accion="nuevo-movimiento">
@@ -74,8 +77,6 @@
         </button>
       </div>
     </header>
-
-    <p class="aviso-dias" id="aviso-dias" role="alert" hidden></p>
 
     <div class="aviso-mes" id="aviso-mes" hidden>
       <span id="aviso-mes-texto"></span>
@@ -108,6 +109,7 @@
 <script src="js/store.js"></script>
 <script src="js/dominio.js"></script>
 <script src="js/matematicas.js"></script>
+<script src="js/calendario.js"></script>
 <script src="js/graficos.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/formularios.js"></script>

@@ -93,12 +93,23 @@ Para evitarlo, en **Categorías → Editar** marca **«No cuenta como gasto
   seguridad anteriores siguen funcionando: sin la marca, todo cuenta como antes.
 - Si la desmarcas, sus movimientos vuelven a contar como gasto.
 
-### Rango de días del mes
+### Calendario: mes y rango de días
 
-Además del mes completo, en **Inicio, Movimientos, Histórico y Comparar** puedes
-ver solo una parte del mes con **«Del día [ ] al [ ]»** (en la cabecera, junto al
-selector de mes). Va desde el día 1 hasta el último día del mes consultado (28, 29,
-30 o 31) y el botón **«Mes completo»** lo restablece.
+En la cabecera, el **mes** se elige tocando su píldora (cuadrícula de 12 meses con flechas
+de año) o con las flechas ‹ ›. Además del mes completo, en **Inicio, Movimientos,
+Histórico y Comparar** puedes ver solo una parte con la píldora de **días**, que abre un
+calendario: tocas el **día inicial y luego el final** y se resalta el rango.
+
+- La semana empieza en **lunes**. También hay atajos (**mes completo**, **primera** y
+  **segunda quincena**) y dos campos numéricos «Del día / al día» por si prefieres escribir.
+- Se admite desde 1 hasta el último día del mes (28, 29, 30 o 31). Un solo día también
+  sirve (toca el mismo día dos veces). **Aplicar** confirma y **✕** vuelve al mes completo.
+- Se valida lo que escribas (día inicial mayor que el final, fuera del mes, vacío o con
+  decimales): el motivo aparece dentro del calendario y no se cambia nada.
+- Teclado: flechas para moverte entre días, Enter para elegir, Inicio/Fin para el primero
+  y el último día, Esc para cerrar.
+- En escritorio se abre como una ventana flotante junto al botón; en el celular, como hoja
+  inferior. Sigue el tema claro/oscuro.
 
 - Ingresos, gastos, ahorro real, totales por categoría y por medio de pago, y la
   lista de movimientos se calculan **solo con esos días**. Un solo día también sirve
@@ -115,11 +126,13 @@ selector de mes). Va desde el día 1 hasta el último día del mes consultado (2
 
 ### En el celular
 
-La pantalla se adapta a móviles (probado de 320 a 428 px de ancho, vertical y horizontal):
+La pantalla se adapta a móviles y tablets (probado de 320 a 1024 px de ancho, en vertical y horizontal, con iPhone hasta el 17 Pro Max, Galaxy, Pixel e iPad):
 
 - **Cabecera corta y no fija.** Título, mes y un botón **«Filtros»** (con un número cuando
   hay filtros activos) que despliega el medio de pago y el rango de días.
-- **Zonas táctiles de al menos 44 × 44 px** en botones, menús «⋮», listas y campos.
+- **Zonas táctiles de al menos 44 × 44 px** en botones, menús «⋮», listas y campos, en cualquier
+  pantalla táctil (también tablets y teléfonos en horizontal).
+- **Tarjetas en lugar de tablas** hasta 900 px de ancho en Movimientos y Presupuesto.
 - **Formularios como hoja inferior:** suben desde abajo, se cierran arrastrando el asa
   hacia abajo o tocando fuera.
 - **Tablas como tarjetas** (Comparar e Histórico): cada fila es una tarjeta con sus datos
@@ -231,9 +244,9 @@ ejecuta.
 Abre **`pruebas.html`** en el navegador (o `http://localhost:8765/pruebas.html`
 si usaste el lanzador).
 
-Son 96 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
+Son 109 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
 tope, avisos, generación de recurrentes, reasignación de categorías,
-comparación de meses, medio de pago, transferencias, rango de días, validaciones, copia de
+comparación de meses, medio de pago, transferencias, rango de días, calendario, validaciones, copia de
 seguridad y fórmulas financieras (estas últimas comparadas con ejemplos
 resueltos del libro de Vidarte, no con el propio código). Verás en verde las que
 pasan y en rojo las que fallan.

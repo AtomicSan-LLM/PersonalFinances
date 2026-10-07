@@ -24,7 +24,7 @@ FP.ui = (function () {
     const idTitulo = U.uid('dlg');
 
     const d = el('dialog', {
-      class: 'dialogo' + (op.ancho ? ' dialogo--ancho' : ''),
+      class: 'dialogo' + (op.ancho ? ' dialogo--ancho' : '') + (op.clase ? ' ' + op.clase : ''),
       'aria-labelledby': idTitulo
     });
 
@@ -98,6 +98,21 @@ FP.ui = (function () {
 
     document.body.appendChild(d);
     d.showModal();
+
+    /* Con `ancla` (el botón que lo abrió) y en pantallas anchas se muestra como ventana
+       flotante pegada al botón; en móvil sigue siendo una hoja inferior. */
+    if (op.ancla && !window.matchMedia('(max-width: 720px)').matches) {
+      d.classList.add('dialogo--popover');
+      const r = op.ancla.getBoundingClientRect();
+      const caja = d.getBoundingClientRect();
+      d.style.margin = '0';
+      d.style.bottom = 'auto';
+      d.style.right = 'auto';
+      let arriba = r.bottom + 8;
+      if (arriba + caja.height > window.innerHeight - 8) arriba = Math.max(8, window.innerHeight - caja.height - 8);
+      d.style.top = Math.round(arriba) + 'px';
+      d.style.left = Math.round(U.clamp(r.left, 8, window.innerWidth - caja.width - 8)) + 'px';
+    }
 
     /* Foco inicial: primer campo del formulario o botón marcado. */
     setTimeout(function () {
