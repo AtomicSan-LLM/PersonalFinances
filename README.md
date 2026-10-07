@@ -77,6 +77,22 @@ o **Efectivo u otro** (o dejarlo **Sin especificar**). Es una clasificación
   meta de ahorro nunca se filtran. Los medios (con «Sin especificar») siempre suman
   el total de gastos del mes. Es solo informativo: no hay topes ni avisos por medio.
 
+### Transferencias (pago de la tarjeta de crédito)
+
+Cuando compras con tarjeta, el gasto se registra ese día. Si luego registras el
+**pago de la tarjeta** como otro gasto, el mismo dinero se contaría dos veces y el
+ahorro real saldría más bajo de lo que es.
+
+Para evitarlo, en **Categorías → Editar** marca **«No cuenta como gasto
+(transferencia)»** en la categoría del pago (por ejemplo «Pago T.C»):
+
+- Sus movimientos **siguen visibles** en Movimientos, con la etiqueta «No cuenta como gasto».
+- **No suman** al total de gastos, al ahorro real, a los totales por categoría, al
+  desglose por medio de pago ni a los topes y avisos.
+- Solo se puede marcar en categorías de **gasto**. Es opcional y las copias de
+  seguridad anteriores siguen funcionando: sin la marca, todo cuenta como antes.
+- Si la desmarcas, sus movimientos vuelven a contar como gasto.
+
 ### Atajos de teclado
 
 - **N** — registrar un movimiento
@@ -179,9 +195,9 @@ ejecuta.
 Abre **`pruebas.html`** en el navegador (o `http://localhost:8765/pruebas.html`
 si usaste el lanzador).
 
-Son 64 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
+Son 72 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
 tope, avisos, generación de recurrentes, reasignación de categorías,
-comparación de meses, medio de pago, validaciones y copia de seguridad. Verás en verde las que
+comparación de meses, medio de pago, transferencias, validaciones y copia de seguridad. Verás en verde las que
 pasan y en rojo las que fallan.
 
 Úsalas si cambias alguna regla: te dicen enseguida si rompiste algo.

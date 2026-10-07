@@ -316,6 +316,9 @@ FP.ui = (function () {
     if (mov.tipo === 'gasto' && FP.medios.esValido(mov.medioPago)) {
       meta.push(distintivoMedio(mov.medioPago));
     }
+    if (FP.dominio.esTransferencia(mov)) {
+      meta.push(distintivo('No cuenta como gasto', 'neutro', '↔'));
+    }
     if (mov.recurrenteId || mov.recurrenteOrigen) {
       meta.push(distintivo('Generado por recurrente', 'info', '🔁'));
     }

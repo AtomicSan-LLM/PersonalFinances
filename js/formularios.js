@@ -242,9 +242,11 @@ FP.formularios = (function () {
     const datos = {
       nombre: original ? original.nombre : '',
       tipo: original ? original.tipo : (op.tipoInicial || 'gasto'),
-      icono: original ? original.icono : ''
+      icono: original ? original.icono : '',
+      esTransferencia: !!(original && original.esTransferencia)
     };
     let errores = {};
+    let bloqueTransferencia = null;
 
     const ICONOS = ['🏠', '🛒', '🚌', '💡', '🩺', '🎬', '👕', '📚', '🍽', '✈️', '🐾', '🎁',
       '💼', '💵', '📈', '🏦', '📦', '❔'];
@@ -287,6 +289,22 @@ FP.formularios = (function () {
           : 'Los topes de gasto solo aplican a categorías de gasto.'
       }));
 
+      /* Transferencia: dinero que se mueve pero ya se contó como gasto (p. ej.
+         pagar la tarjeta de crédito). Solo tiene sentido en categorías de gasto. */
+      bloqueTransferencia = el('label', { class: 'check-linea' }, [
+        el('input', {
+          type: 'checkbox', checked: datos.esTransferencia,
+          onchange: function (e) { datos.esTransferencia = e.target.checked; }
+        }),
+        el('span', { class: 'check-linea__texto' }, [
+          'No cuenta como gasto (transferencia)',
+          el('small', null, 'Úsalo para el pago de la tarjeta de crédito: esas compras ya se contaron como gasto ' +
+            'cuando las hiciste. Los movimientos siguen visibles, pero no suman al gasto, al ahorro real ni a los topes.')
+        ])
+      ]);
+      bloqueTransferencia.hidden = datos.tipo !== 'gasto';
+      d.cuerpo.appendChild(bloqueTransferencia);
+
       const iconos = el('div', { class: 'fila', style: 'gap:6px' });
       ICONOS.forEach(function (ic) {
         iconos.appendChild(el('button', {
@@ -307,7 +325,10 @@ FP.formularios = (function () {
         el('input', {
           type: 'radio', name: 'tipo-categoria', id: id, value: valor,
           checked: datos.tipo === valor, disabled: bloqueado,
-          onchange: function () { datos.tipo = valor; }
+          onchange: function () {
+            datos.tipo = valor;
+            if (bloqueTransferencia) bloqueTransferencia.hidden = valor !== 'gasto';
+          }
         }),
         el('span', null, [
           el('strong', null, etiqueta),
@@ -471,7 +492,7 @@ FP.formularios = (function () {
           (cat && cat.icono ? cat.icono + ' ' : '') + (cat ? cat.nombre : '')));
       } else {
         const conTope = new Set((pres.topes || []).map(function (t) { return t.categoriaId; }));
-        const disponibles = FP.store.categoriasDe('gasto').filter(function (c) { return !conTope.has(c.id); });
+        const disponibles = FP.store.categoriasDe('gasto').filter(function (c) { return !conTope.has(c.id) && !c.esTransferencia; });
 
         if (!disponibles.length) {
           d.cuerpo.appendChild(el('p', { class: 'campo__ayuda' },

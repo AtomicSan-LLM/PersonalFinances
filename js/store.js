@@ -254,6 +254,8 @@ FP.store = (function () {
         activa: true,
         orden: s.categorias.length
       };
+      /* Solo las de gasto pueden ser transferencia (p. ej. pago de tarjeta). */
+      if (cat.tipo === 'gasto' && datos.esTransferencia) cat.esTransferencia = true;
       s.categorias.push(cat);
       return cat;
     });
@@ -270,6 +272,8 @@ FP.store = (function () {
       if (cambios.tipo !== undefined && !usoDeCategoria(id).movimientos) {
         cat.tipo = cambios.tipo === 'ingreso' ? 'ingreso' : 'gasto';
       }
+      if (cambios.esTransferencia !== undefined) cat.esTransferencia = !!cambios.esTransferencia;
+      if (cat.tipo !== 'gasto') delete cat.esTransferencia;
       return cat;
     });
   }

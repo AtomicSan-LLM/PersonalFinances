@@ -852,6 +852,97 @@
     igual(D.resumen(ACTUAL).gastosPorMedio.credito, 123456);
   });
 
+  /* ================================================== Transferencias (T.C) == */
+
+  /* Pagar la tarjeta de crédito con la cuenta de débito mueve dinero que ya se
+     contó como gasto cuando se hizo la compra. Una categoría marcada como
+     transferencia no debe contarlo de nuevo. */
+
+  prueba('Transferencia: el pago de tarjeta no cuenta como gasto ni resta del ahorro real', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '02', monto: 500000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '03', monto: 200000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: MES + '04', monto: 200000, tipo: 'gasto', categoriaId: pagoTC.id, medioPago: 'debito' });
+
+    const r = D.resumen(ACTUAL);
+    igual(r.gastos, 200000, 'solo cuenta la compra, no el pago de la tarjeta');
+    igual(r.ahorroReal, 300000, 'el ahorro real no se resta dos veces');
+    igual(r.gastosPorMedio.debito, 0, 'el pago no cuenta en débito');
+    igual(r.gastosPorMedio.credito, 200000, 'la compra sigue contando en crédito');
+  });
+
+  prueba('Transferencia: el desglose por medio sigue sumando el total de gastos', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '03', monto: 90000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: MES + '04', monto: 40000, tipo: 'gasto', categoriaId: cat('Transporte'), medioPago: 'efectivo' });
+    S.crearMovimiento({ fecha: MES + '05', monto: 90000, tipo: 'gasto', categoriaId: pagoTC.id, medioPago: 'debito' });
+
+    const suma = D.desgloseMedioPago(ACTUAL).reduce(function (acc, m) { return acc + m.total; }, 0);
+    igual(suma, D.resumen(ACTUAL).gastos, 'los medios suman los gastos');
+    igual(suma, 130000);
+  });
+
+  prueba('Transferencia: no entra en los totales por categoría ni en los topes', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.definirTope(ACTUAL, pagoTC.id, 100000);
+    S.crearMovimiento({ fecha: MES + '04', monto: 900000, tipo: 'gasto', categoriaId: pagoTC.id, medioPago: 'debito' });
+
+    igual(D.totalesPorCategoria(ACTUAL, 'gasto').has(pagoTC.id), false, 'sin total por categoría');
+    const fila = D.estadoTopes(ACTUAL).find(function (f) { return f.categoriaId === pagoTC.id; });
+    igual(fila.gastado, 0, 'no se gasta nada contra el tope');
+    igual(fila.estado, 'ok', 'no se dispara el aviso de tope superado');
+    igual(D.alertas(ACTUAL).length, 0, 'no genera alertas');
+  });
+
+  prueba('Transferencia: el movimiento sigue visible y editable en Movimientos', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '04', monto: 900000, tipo: 'gasto', categoriaId: pagoTC.id, medioPago: 'debito' });
+
+    igual(D.movimientosDe(ACTUAL).length, 1, 'el movimiento existe');
+    igual(D.filtrarMovimientos(ACTUAL, {}).length, 1, 'aparece en la lista');
+    igual(D.esTransferencia(D.movimientosDe(ACTUAL)[0]), true);
+  });
+
+  prueba('Transferencia: desmarcarla vuelve a contar el movimiento como gasto', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '04', monto: 70000, tipo: 'gasto', categoriaId: pagoTC.id });
+    igual(D.resumen(ACTUAL).gastos, 0, 'marcada: no cuenta');
+
+    S.actualizarCategoria(pagoTC.id, { esTransferencia: false });
+    igual(D.resumen(ACTUAL).gastos, 70000, 'desmarcada: cuenta de nuevo');
+  });
+
+  prueba('Transferencia: solo existe en categorías de gasto', function () {
+    limpiar();
+    const ingreso = S.crearCategoria({ nombre: 'Reembolso', tipo: 'ingreso', esTransferencia: true });
+    igual(!!ingreso.esTransferencia, false, 'una categoría de ingreso nunca es transferencia');
+    S.crearMovimiento({ fecha: MES + '04', monto: 50000, tipo: 'ingreso', categoriaId: ingreso.id });
+    igual(D.resumen(ACTUAL).ingresos, 50000, 'el ingreso cuenta siempre');
+  });
+
+  prueba('Transferencia: una categoría normal sigue contando igual (sin el campo)', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '04', monto: 120000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    igual(D.resumen(ACTUAL).gastos, 120000);
+    igual(!!S.categoria(cat('Mercado')).esTransferencia, false);
+  });
+
+  prueba('Transferencia: exportar e importar conserva la marca', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '04', monto: 300000, tipo: 'gasto', categoriaId: pagoTC.id });
+    const copia = S.exportarJSON();
+    S.borrarTodo();
+    S.importarJSON(copia);
+    igual(S.categoria(pagoTC.id).esTransferencia, true, 'la marca viaja en la copia');
+    igual(D.resumen(ACTUAL).gastos, 0, 'y sigue sin contar');
+  });
+
   /* ============================================================ Informe == */
 
   limpiar();

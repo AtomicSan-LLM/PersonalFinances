@@ -108,12 +108,16 @@ FP.vistas.movimientos = (function () {
     }
 
     const ingresos = U.suma(movs.filter(function (m) { return m.tipo === 'ingreso'; }), function (m) { return m.monto; });
-    const gastos = U.suma(movs.filter(function (m) { return m.tipo === 'gasto'; }), function (m) { return m.monto; });
+    /* Las transferencias (p. ej. pago de tarjeta) se listan, pero no suman al gasto. */
+    const gastos = U.suma(movs.filter(function (m) { return m.tipo === 'gasto' && !FP.dominio.esTransferencia(m); }),
+      function (m) { return m.monto; });
+    const nTransferencias = movs.filter(function (m) { return FP.dominio.esTransferencia(m); }).length;
 
     cont.appendChild(el('div', { class: 'fila fila--entre mt-3', style: 'margin-bottom:12px' }, [
       el('p', { class: 'texto-sm texto-apagado' },
         movs.length === 0 ? 'Ningún movimiento coincide'
-          : movs.length + ' movimiento' + (movs.length === 1 ? '' : 's')),
+          : movs.length + ' movimiento' + (movs.length === 1 ? '' : 's') +
+            (nTransferencias ? ' (' + nTransferencias + ' sin contar como gasto)' : '')),
       medio !== 'todos'
         ? el('p', { class: 'texto-sm num' }, [
           el('span', { class: 'monto--gasto', style: 'font-weight:700' }, '-' + FP.dinero.formato(gastos))
@@ -196,8 +200,9 @@ FP.vistas.movimientos = (function () {
         el('td', { class: 'nowrap' }, celdaMedio(m)),
         el('td', null, [
           el('div', null, m.descripcion || el('span', { class: 'texto-apagado' }, '—')),
-          (m.recurrenteId || m.recurrenteOrigen || m.revisar || esFutura)
+          (m.recurrenteId || m.recurrenteOrigen || m.revisar || esFutura || FP.dominio.esTransferencia(m))
             ? el('div', { class: 'fila', style: 'gap:6px;margin-top:4px;flex-wrap:wrap' }, [
+              FP.dominio.esTransferencia(m) ? ui.distintivo('No cuenta como gasto', 'neutro', '↔') : null,
               (m.recurrenteId || m.recurrenteOrigen) ? ui.distintivo('Generado por recurrente', 'info', '🔁') : null,
               m.revisar ? ui.distintivo('Por revisar', 'advertencia', '👁') : null,
               esFutura ? ui.distintivo('Fecha futura', 'neutro', '📅') : null
