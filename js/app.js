@@ -274,10 +274,89 @@ FP.app = (function () {
 
     aviso.textContent = mensajes.join(' ');
     aviso.hidden = mensajes.length === 0;
+    /* En móvil los campos están en un panel plegable: se abre para que se vea qué corregir. */
+    if (mensajes.length) abrirFiltros(true);
     [['desde', inDesde], ['hasta', inHasta]].forEach(function (par) {
       if (errores[par[0]]) par[1].setAttribute('aria-invalid', 'true');
       else par[1].removeAttribute('aria-invalid');
     });
+  }
+
+  /* ------------------------------------- filtros plegables (móvil) ------ */
+
+  let filtrosAbiertos = false;
+
+  function abrirFiltros(abrir) {
+    filtrosAbiertos = !!abrir;
+    const panel = document.getElementById('cabecera-filtros');
+    const boton = document.getElementById('btn-filtros');
+    if (panel) panel.classList.toggle('abierto', filtrosAbiertos);
+    if (boton) boton.setAttribute('aria-expanded', String(filtrosAbiertos));
+  }
+
+  /**
+   * En móvil medio de pago y rango de días viven en un panel plegable. El botón
+   * «Filtros» solo aparece si la pantalla usa alguno y muestra cuántos están activos.
+   */
+  function sincronizarFiltros(vista, rangoVista) {
+    const boton = document.getElementById('btn-filtros');
+    if (!boton) return;
+    const usa = !!(vista.usaFiltroMedio || vista.usaRangoDias);
+    boton.hidden = !usa;
+    document.querySelector('.cabecera').classList.toggle('cabecera--filtros', usa);
+
+    const activos = (vista.usaFiltroMedio && medioPago !== 'todos' ? 1 : 0) + (rangoVista ? 1 : 0);
+    const n = document.getElementById('filtros-n');
+    n.hidden = activos === 0;
+    n.textContent = String(activos);
+    boton.setAttribute('aria-label', 'Filtros' + (activos ? ', ' + activos + ' activo(s)' : ''));
+
+    abrirFiltros(usa && filtrosAbiertos);
+  }
+
+  /* ------------------------------------------- botón flotante (FAB) ----- */
+
+  let ultimoScroll = 0;
+
+  function actualizarFab() {
+    const fab = document.querySelector('.fab');
+    if (!fab) return;
+    const y = window.scrollY;
+    if (y > ultimoScroll + 6 && y > 120) fab.classList.add('fab--oculto');
+    else if (y < ultimoScroll - 6 || y <= 120) fab.classList.remove('fab--oculto');
+    ultimoScroll = y;
+  }
+
+  /* ---------------------------------- deslizar para cambiar de mes ------ */
+
+  /**
+   * Deslizar el dedo a la derecha/izquierda sobre el contenido va al mes
+   * anterior/siguiente. Solo en móvil, solo donde se ve el selector de mes y
+   * con umbrales para no confundirlo con un scroll o con una tabla que se desplaza.
+   */
+  function conectarDeslizarMes() {
+    const zona = document.getElementById('contenido');
+    let inicio = null;
+
+    zona.addEventListener('touchstart', function (e) {
+      inicio = null;
+      if (!mqMovil.matches || e.touches.length !== 1) return;
+      if (e.target.closest('.tabla-contenedor, svg, input, select, textarea, .menu, dialog')) return;
+      const vista = RUTAS[rutaActual]();
+      if (vista.ocultarSelectorMes) return;
+      inicio = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    }, { passive: true });
+
+    zona.addEventListener('touchend', function (e) {
+      if (!inicio) return;
+      const dx = e.changedTouches[0].clientX - inicio.x;
+      const dy = e.changedTouches[0].clientY - inicio.y;
+      const dt = Date.now() - inicio.t;
+      inicio = null;
+      if (Math.abs(dx) < 90 || Math.abs(dy) > 50 || Math.abs(dx) < Math.abs(dy) * 2 || dt > 600) return;
+      cambiarPeriodo(U.sumarMeses(periodo, dx > 0 ? -1 : 1));
+      FP.ui.anunciar('Mes: ' + U.periodoLegible(periodo));
+    }, { passive: true });
   }
 
   function leerDia(texto) {
@@ -350,6 +429,9 @@ FP.app = (function () {
         selectorMedio.classList.toggle('selector-medio--activo', medioPago !== 'todos');
       }
 
+      /* Botón «Filtros» (móvil): contador y estado del panel */
+      sincronizarFiltros(vista, rangoVista);
+
       /* Aviso de mes distinto al actual */
       const aviso = document.getElementById('aviso-mes');
       const esActual = periodo === U.periodoActual();
@@ -394,6 +476,13 @@ FP.app = (function () {
     construirSelectorMedio();
     const inputMedio = document.getElementById('input-medio');
     if (inputMedio) inputMedio.addEventListener('change', function (e) { cambiarMedioPago(e.target.value); });
+
+    /* Filtros plegables (móvil), botón flotante y deslizar para cambiar de mes */
+    document.getElementById('btn-filtros').addEventListener('click', function () {
+      abrirFiltros(!filtrosAbiertos);
+    });
+    window.addEventListener('scroll', actualizarFab, { passive: true });
+    conectarDeslizarMes();
 
     /* Rango de días del mes */
     ['input-dia-desde', 'input-dia-hasta'].forEach(function (id) {

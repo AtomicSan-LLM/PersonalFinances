@@ -76,6 +76,26 @@ FP.ui = (function () {
       if (ev.target === d) cerrar();
     });
 
+    /* En móvil el diálogo es una hoja inferior: se cierra arrastrando su cabecera
+       hacia abajo (la cabecera tiene touch-action: none en CSS, así que no mueve la página). */
+    const cabecera = d.querySelector('.dialogo__cabecera');
+    let arrastreY = null;
+    cabecera.addEventListener('touchstart', function (ev) {
+      if (!window.matchMedia('(max-width: 720px)').matches) return;
+      arrastreY = ev.touches[0].clientY;
+    }, { passive: true });
+    cabecera.addEventListener('touchmove', function (ev) {
+      if (arrastreY === null) return;
+      const dy = ev.touches[0].clientY - arrastreY;
+      if (dy > 0) d.style.transform = 'translateY(' + dy + 'px)';
+    }, { passive: true });
+    cabecera.addEventListener('touchend', function (ev) {
+      if (arrastreY === null) return;
+      const dy = ev.changedTouches[0].clientY - arrastreY;
+      arrastreY = null;
+      if (dy > 90) cerrar(); else d.style.transform = '';
+    });
+
     document.body.appendChild(d);
     d.showModal();
 
@@ -658,7 +678,24 @@ FP.ui = (function () {
     return grupo;
   }
 
+  /**
+   * Marca una tabla para que en móvil se apile como tarjetas (una por fila, cada
+   * dato con su etiqueta). Copia el texto de cada encabezado a las celdas de su
+   * columna. En escritorio la tabla se ve igual. Devuelve la misma tabla.
+   */
+  function apilarTabla(tabla) {
+    const encabezados = U.$$('thead th', tabla).map(function (th) { return th.textContent.trim(); });
+    U.$$('tbody tr', tabla).forEach(function (fila) {
+      Array.prototype.forEach.call(fila.children, function (celda, i) {
+        if (celda.tagName === 'TD' && encabezados[i]) celda.setAttribute('data-etiqueta', encabezados[i]);
+      });
+    });
+    tabla.classList.add('tabla--apilable');
+    return tabla;
+  }
+
   return {
+    apilarTabla: apilarTabla,
     dialogo: dialogo, confirmar: confirmar, toast: toast, anunciar: anunciar,
     distintivo: distintivo, distintivoEstado: distintivoEstado, distintivoMedio: distintivoMedio,
     barraProgreso: barraProgreso,

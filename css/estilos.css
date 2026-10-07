@@ -276,6 +276,17 @@ a { color: var(--primario); }
 }
 .selector-dias input.selector-dias__input[aria-invalid="true"] { border-color: var(--error); }
 
+/* Filtros de la cabecera. En escritorio el contenedor "desaparece" (sus hijos se
+   colocan como antes) y el botón no se ve; en móvil se pliega (ver sección 12). */
+.cabecera__filtros { display: contents; }
+.btn-filtros { display: none; }
+.btn-filtros__n {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; margin-left: 2px;
+  border-radius: 10px; background: var(--primario); color: var(--sobre-primario);
+  font-size: .75rem; font-weight: 700;
+}
+
 /* Mensaje de error del rango de días (se anuncia con role="alert"). */
 .aviso-dias {
   margin: 0 var(--e-6) var(--e-4);
@@ -593,6 +604,9 @@ table.tabla td.num, table.tabla th.num { text-align: right; font-variant-numeric
 table.tabla tbody tr:hover { background: var(--superficie-2); }
 table.tabla tbody tr:last-child td { border-bottom: 0; }
 
+/* Tabla que en móvil se apila como tarjetas: ui.apilarTabla() pone en cada celda
+   data-etiqueta con el texto de su encabezado. En escritorio no cambia nada. */
+
 /* Estado vacío */
 .vacio { text-align: center; padding: var(--e-6) var(--e-4); }
 .vacio__icono { font-size: 2.2rem; }
@@ -741,22 +755,88 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
 
   .sidebar { display: none; }
 
+  /* Cabecera corta: título, mes y un botón «Filtros». Ya no es fija: así no
+     ocupa un cuarto de la pantalla mientras lees. */
   .cabecera {
-    padding: var(--e-4) var(--e-4) var(--e-3);
-    align-items: stretch; flex-direction: column; gap: var(--e-3);
+    position: relative;
+    padding: var(--e-3) var(--e-4) var(--e-2);
+    align-items: stretch; flex-direction: column; flex-wrap: nowrap; gap: var(--e-2);
   }
   .cabecera__titulo { font-size: 1.25rem; }
-  .cabecera__der { justify-content: space-between; }
-  .selector-mes { flex: 1; }
+  .cabecera__sub { margin-top: 0; }
+  .cabecera__izq, .cabecera__der { min-width: 0; }
+  .cabecera__der { justify-content: space-between; gap: var(--e-2); }
+  /* El selector de mes ocupa toda su fila; «Filtros» va arriba a la derecha, junto al título. */
+  .selector-mes { flex: 1 1 100%; min-width: 0; }
+  .selector-mes__input { flex: 1; min-width: 0; min-height: 44px; }
+  /* Los distintivos largos (p. ej. «Ahorraste $ … más en Septiembre 2026») se parten en vez de salirse. */
+  .distintivo { white-space: normal; max-width: 100%; text-align: left; }
+  .btn-filtros {
+    display: inline-flex; align-items: center; gap: var(--e-1);
+    position: absolute; top: var(--e-2); right: var(--e-4);
+  }
+  .cabecera--filtros .cabecera__izq { padding-right: 112px; }
+  .cabecera__filtros { display: none; }
+  .cabecera__filtros.abierto {
+    display: flex; flex-direction: column; gap: var(--e-2);
+    order: 3; flex: 1 1 100%;
+  }
   .selector-medio { flex: 1 1 100%; }
   .selector-dias { flex: 1 1 100%; flex-wrap: wrap; }
   .aviso-dias { margin-left: var(--e-4); margin-right: var(--e-4); }
   .selector-medio__input { flex: 1; min-width: 0; }
-  .selector-mes__input { flex: 1; min-width: 0; }
   .btn--registrar { display: none; }
 
-  .contenido { padding: 0 var(--e-4) 96px; }
-  .aviso-mes { margin-left: var(--e-4); margin-right: var(--e-4); }
+  /* Espacio final para que el botón flotante y la barra inferior no tapen lo último. */
+  .contenido { padding: 0 var(--e-4) calc(132px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Aviso «estás consultando otro mes»: una franja baja, no un bloque grande. */
+  .aviso-mes {
+    margin: 0 var(--e-4) var(--e-3); padding: 0 var(--e-3);
+    font-size: .84rem; flex-wrap: nowrap; justify-content: space-between; gap: var(--e-2);
+  }
+  .aviso-mes .enlace { white-space: nowrap; }
+
+  /* Zonas táctiles de al menos 44 × 44 px (WCAG 2.5.5 / guías de Apple y Google). */
+  .btn, .btn--sm { min-height: 44px; }
+  .btn-icono { min-width: 44px; min-height: 44px; }
+  .enlace { min-height: 44px; display: inline-flex; align-items: center; }
+  .grupo-segmentado button { min-height: 44px; }
+  .menu button { min-height: 44px; }
+  select, input[type="text"], input[type="number"], input[type="date"], input[type="month"],
+  input[type="search"], input[type="password"] { min-height: 44px; }
+  .selector-dias input.selector-dias__input { min-height: 44px; width: 4.6rem; }
+  .selector-medio, .selector-dias { padding: var(--e-1) var(--e-3); }
+  .check-linea { min-height: 44px; align-items: center; }
+  .check-linea input { width: 22px; height: 22px; margin-top: 0; }
+  .radio-opcion { min-height: 44px; }
+
+  /* El botón flotante se esconde al bajar y reaparece al subir. */
+  .fab { transition: transform .2s ease, opacity .2s ease; }
+  .fab--oculto { transform: translateY(140px); opacity: 0; pointer-events: none; }
+
+  /* Tablas apiladas: cada fila es una tarjeta y cada celda lleva su etiqueta. */
+  .tabla--apilable, .tabla--apilable tbody, .tabla--apilable tr,
+  .tabla--apilable th, .tabla--apilable td { display: block; width: 100%; }
+  .tabla--apilable thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
+  }
+  .tabla--apilable tbody tr { padding: var(--e-3) 0; border-bottom: 1px solid var(--borde); }
+  .tabla--apilable tbody tr:last-child { border-bottom: 0; }
+  .tabla--apilable tbody tr:hover { background: transparent; }
+  table.tabla.tabla--apilable tbody th {
+    border: 0; padding: 0 0 var(--e-2); white-space: normal;
+    font-size: 1rem; text-transform: none; letter-spacing: 0; color: var(--texto);
+  }
+  table.tabla.tabla--apilable tbody td {
+    display: flex; justify-content: flex-end; align-items: center; gap: var(--e-1);
+    border: 0; padding: var(--e-1) 0; text-align: right;
+  }
+  .tabla--apilable td::before {
+    content: attr(data-etiqueta); flex: 0 0 auto; text-align: left; margin-right: auto; padding-right: var(--e-3);
+    color: var(--texto-3); font-size: .82rem; font-weight: 600;
+  }
+  .tabla--apilable td:not([data-etiqueta])::before { content: none; }
 
   .tarjeta { padding: var(--e-4); border-radius: var(--radio); }
   .rejilla--2, .rejilla--3, .rejilla--panel { grid-template-columns: 1fr; }
@@ -801,16 +881,30 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
 
   .toasts { bottom: calc(136px + env(safe-area-inset-bottom, 0px)); }
 
-  .dialogo {
-    width: 100vw; max-width: 100vw; max-height: 100vh; height: 100vh;
-    border-radius: 0; border: 0;
-    margin: 0; top: 0; left: 0;
+  /* Diálogos como hoja inferior: salen desde abajo, al alcance del pulgar, y se
+     cierran arrastrando el asa hacia abajo o tocando fuera. */
+  .dialogo, .dialogo--ancho {
+    width: 100vw; max-width: 100vw; height: auto;
+    max-height: 92vh; max-height: 92dvh;
+    margin: 0; top: auto; bottom: 0; left: 0; right: 0;
+    border: 0; border-top: 1px solid var(--borde);
+    border-radius: 20px 20px 0 0;
   }
-  .dialogo__cuerpo { max-height: none; flex: 1; }
-  .dialogo[open] { display: flex; flex-direction: column; }
-  .dialogo__pie { position: sticky; bottom: 0; background: var(--superficie); }
+  .dialogo[open] { display: flex; flex-direction: column; animation: subir-hoja .22s ease-out; }
+  .dialogo__cabecera { position: relative; padding: var(--e-5) var(--e-4) var(--e-2); touch-action: none; }
+  .dialogo__cabecera::before {
+    content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 40px; height: 4px; border-radius: 2px; background: var(--borde-fuerte);
+  }
+  .dialogo__cuerpo { max-height: none; flex: 1; padding: 0 var(--e-4) var(--e-4); }
+  .dialogo__pie {
+    position: sticky; bottom: 0; background: var(--superficie);
+    padding: var(--e-3) var(--e-4) calc(var(--e-4) + env(safe-area-inset-bottom, 0px));
+  }
   .dialogo__pie .btn { flex: 1; }
 }
+
+@keyframes subir-hoja { from { transform: translateY(100%); } to { transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -192,7 +192,7 @@ FP.vistas.historico = (function () {
         }, 'Comparar meses')
       ]),
       el('div', { class: 'tabla-contenedor' }, [
-        el('table', { class: 'tabla' }, [
+        ui.apilarTabla(el('table', { class: 'tabla' }, [
           el('thead', null, [
             el('tr', null, [
               el('th', { scope: 'col' }, 'Mes'),
@@ -207,7 +207,7 @@ FP.vistas.historico = (function () {
             ])
           ]),
           cuerpo
-        ])
+        ]))
       ])
     ]);
   }

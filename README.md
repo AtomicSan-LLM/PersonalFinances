@@ -113,6 +113,21 @@ selector de mes). Va desde el día 1 hasta el último día del mes consultado (2
   tenga ese mes). Si lo escribes mal (día inicial mayor que el final, fuera del
   mes, vacío o con decimales) se muestra el motivo y no se cambia nada.
 
+### En el celular
+
+La pantalla se adapta a móviles (probado de 320 a 428 px de ancho, vertical y horizontal):
+
+- **Cabecera corta y no fija.** Título, mes y un botón **«Filtros»** (con un número cuando
+  hay filtros activos) que despliega el medio de pago y el rango de días.
+- **Zonas táctiles de al menos 44 × 44 px** en botones, menús «⋮», listas y campos.
+- **Formularios como hoja inferior:** suben desde abajo, se cierran arrastrando el asa
+  hacia abajo o tocando fuera.
+- **Tablas como tarjetas** (Comparar e Histórico): cada fila es una tarjeta con sus datos
+  etiquetados, sin desplazarse hacia los lados.
+- **Botón «＋» que se esconde al bajar** y reaparece al subir, para no tapar los datos.
+- **Deslizar a los lados** sobre el contenido cambia al mes anterior o siguiente (solo
+  donde se ve el selector de mes; no actúa sobre tablas, gráficos ni campos).
+
 ### Atajos de teclado
 
 - **N** — registrar un movimiento

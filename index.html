@@ -43,16 +43,25 @@
       </div>
 
       <div class="cabecera__der">
-        <div class="selector-medio" id="selector-medio" hidden>
-          <label class="selector-medio__etiqueta" for="input-medio">Medio de pago</label>
-          <select id="input-medio" class="selector-medio__input"></select>
-        </div>
-        <div class="selector-dias" id="selector-dias" role="group" aria-label="Rango de días del mes" hidden>
-          <label class="selector-dias__etiqueta" for="input-dia-desde">Del día</label>
-          <input type="number" id="input-dia-desde" class="selector-dias__input" min="1" max="31" step="1" inputmode="numeric" aria-describedby="aviso-dias">
-          <label class="selector-dias__etiqueta" for="input-dia-hasta">al</label>
-          <input type="number" id="input-dia-hasta" class="selector-dias__input" min="1" max="31" step="1" inputmode="numeric" aria-describedby="aviso-dias">
-          <button type="button" class="btn btn--sm btn--fantasma" data-accion="mes-completo" hidden>Mes completo</button>
+        <!-- Solo móvil: abre/cierra los filtros (medio de pago y rango de días). En
+             escritorio este botón no se ve y los filtros están siempre a la vista. -->
+        <button type="button" class="btn btn--sm btn-filtros" id="btn-filtros"
+                aria-expanded="false" aria-controls="cabecera-filtros" hidden>
+          <span aria-hidden="true">⚙</span> Filtros
+          <span class="btn-filtros__n" id="filtros-n" hidden></span>
+        </button>
+        <div class="cabecera__filtros" id="cabecera-filtros">
+          <div class="selector-medio" id="selector-medio" hidden>
+            <label class="selector-medio__etiqueta" for="input-medio">Medio de pago</label>
+            <select id="input-medio" class="selector-medio__input"></select>
+          </div>
+          <div class="selector-dias" id="selector-dias" role="group" aria-label="Rango de días del mes" hidden>
+            <label class="selector-dias__etiqueta" for="input-dia-desde">Del día</label>
+            <input type="number" id="input-dia-desde" class="selector-dias__input" min="1" max="31" step="1" inputmode="numeric" aria-describedby="aviso-dias">
+            <label class="selector-dias__etiqueta" for="input-dia-hasta">al</label>
+            <input type="number" id="input-dia-hasta" class="selector-dias__input" min="1" max="31" step="1" inputmode="numeric" aria-describedby="aviso-dias">
+            <button type="button" class="btn btn--sm btn--fantasma" data-accion="mes-completo" hidden>Mes completo</button>
+          </div>
         </div>
         <div class="selector-mes" id="selector-mes" role="group" aria-label="Selector de mes">
           <button type="button" class="btn-icono" data-mes="anterior" aria-label="Mes anterior">‹</button>

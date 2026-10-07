@@ -134,7 +134,7 @@ FP.vistas.comparar = (function () {
     return el('section', { class: 'tarjeta mt-4' }, [
       ui.cabeceraSeccion('Indicadores', [ui.distintivo(veredicto.texto, veredicto.sev)]),
       el('div', { class: 'tabla-contenedor' }, [
-        el('table', { class: 'tabla' }, [
+        ui.apilarTabla(el('table', { class: 'tabla' }, [
           el('thead', null, [
             el('tr', null, [
               el('th', { scope: 'col' }, 'Indicador'),
@@ -144,7 +144,7 @@ FP.vistas.comparar = (function () {
             ])
           ]),
           cuerpo
-        ])
+        ]))
       ])
     ]);
   }
@@ -202,7 +202,7 @@ FP.vistas.comparar = (function () {
     return el('section', { class: 'tarjeta mt-4' }, [
       el('h2', { class: 'seccion__titulo', style: 'margin-bottom:12px' }, 'Gastos por medio de pago'),
       el('div', { class: 'tabla-contenedor' }, [
-        el('table', { class: 'tabla' }, [
+        ui.apilarTabla(el('table', { class: 'tabla' }, [
           el('thead', null, [
             el('tr', null, [
               el('th', { scope: 'col' }, 'Medio de pago'),
@@ -212,7 +212,7 @@ FP.vistas.comparar = (function () {
             ])
           ]),
           cuerpo
-        ])
+        ]))
       ]),
       el('p', { class: 'campo__ayuda mt-3' },
         'Los medios suman el total de gastos de cada mes (incluye "Sin especificar").')
@@ -253,7 +253,7 @@ FP.vistas.comparar = (function () {
     return el('section', { class: 'tarjeta mt-4' }, [
       el('h2', { class: 'seccion__titulo', style: 'margin-bottom:12px' }, 'Gasto por categoría' + sufijo),
       el('div', { class: 'tabla-contenedor' }, [
-        el('table', { class: 'tabla' }, [
+        ui.apilarTabla(el('table', { class: 'tabla' }, [
           el('thead', null, [
             el('tr', null, [
               el('th', { scope: 'col' }, 'Categoría'),
@@ -263,7 +263,7 @@ FP.vistas.comparar = (function () {
             ])
           ]),
           cuerpo
-        ])
+        ]))
       ]),
       el('p', { class: 'campo__ayuda mt-3' },
         'Se ordenan por el tamaño del cambio, para que veas primero dónde se movió más tu dinero.')
