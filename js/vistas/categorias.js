@@ -78,6 +78,7 @@ FP.vistas.categorias = (function () {
         el('div', { class: 'movimiento__titulo', style: inactiva ? 'opacity:.6' : '' }, cat.nombre),
         el('div', { class: 'movimiento__meta' }, [
           el('span', null, detalles.join(' · ')),
+          cat.esTransferencia ? ui.distintivo('No cuenta como gasto', 'info', '🔁') : null,
           inactiva ? ui.distintivo('Desactivada', 'neutro', '⏸') : null
         ])
       ]),

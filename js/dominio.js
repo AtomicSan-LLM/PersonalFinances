@@ -19,6 +19,22 @@ FP.dominio = (function () {
     return S().movimientos.filter(function (m) { return U.periodoDe(m.fecha) === periodo; });
   }
 
+  /**
+   * ¿Es un gasto de una categoría marcada como transferencia (p. ej. el pago de
+   * la tarjeta de crédito)? Ese dinero ya se contó como gasto al hacer la compra,
+   * así que no vuelve a entrar en los totales, topes ni avisos.
+   */
+  function esTransferencia(m) {
+    if (!m || m.tipo !== 'gasto') return false;
+    const cat = FP.store.categoria(m.categoriaId);
+    return !!(cat && cat.esTransferencia);
+  }
+
+  /** Movimientos del mes que entran en los totales: todos menos las transferencias. */
+  function movimientosContables(periodo) {
+    return movimientosDe(periodo).filter(function (m) { return !esTransferencia(m); });
+  }
+
   /** Ordena por fecha descendente y, a igualdad de fecha, por registro más reciente. */
   function ordenarRecientes(lista) {
     return lista.slice().sort(function (a, b) {
@@ -61,7 +77,8 @@ FP.dominio = (function () {
    * Ahorro real = ingresos − gastos (S-04).
    */
   function resumen(periodo) {
-    const movs = movimientosDe(periodo);
+    const todos = movimientosDe(periodo);
+    const movs = todos.filter(function (m) { return !esTransferencia(m); });
     let ingresos = 0, gastos = 0;
     const gastosPorMedio = {};
     FP.medios.todos().forEach(function (x) { gastosPorMedio[x.clave] = 0; });
@@ -85,15 +102,15 @@ FP.dominio = (function () {
       cumpleMeta: meta > 0 && ahorroReal >= meta,
       diferenciaMeta: ahorroReal - meta,
       porcentajeMeta: meta > 0 ? (ahorroReal / meta) * 100 : null,
-      nMovimientos: movs.length,
-      hayDatos: movs.length > 0 || meta > 0 || (pres.topes || []).length > 0
+      nMovimientos: todos.length,
+      hayDatos: todos.length > 0 || meta > 0 || (pres.topes || []).length > 0
     };
   }
 
   /** FR-012 — Total por categoría en el mes. Devuelve un Map categoriaId → total. */
   function totalesPorCategoria(periodo, tipo, medio) {
     const mapa = new Map();
-    movimientosDe(periodo).forEach(function (m) {
+    movimientosContables(periodo).forEach(function (m) {
       if (tipo && m.tipo !== tipo) return;
       if (medio && medio !== 'todos' && FP.medios.de(m) !== medio) return;
       const k = m.categoriaId || 'sin-categoria';
@@ -174,7 +191,7 @@ FP.dominio = (function () {
     topesPorCat.forEach(function (_v, k) { ids.add(k); });
     totales.forEach(function (_v, k) { ids.add(k); });
     if (op.incluirTodas) {
-      FP.store.categoriasDe('gasto').forEach(function (c) { ids.add(c.id); });
+      FP.store.categoriasDe('gasto').forEach(function (c) { if (!c.esTransferencia) ids.add(c.id); });
     }
 
     const filas = [];
@@ -221,7 +238,7 @@ FP.dominio = (function () {
     const t = (pres.topes || []).find(function (x) { return x.categoriaId === categoriaId; });
     const tope = t ? Number(t.monto) || 0 : null;
     let gastado = 0;
-    movimientosDe(periodo).forEach(function (m) {
+    movimientosContables(periodo).forEach(function (m) {
       if (m.tipo === 'gasto' && m.categoriaId === categoriaId) gastado += m.monto;
     });
     return { tope: tope, gastado: gastado, estado: estadoDeTope(gastado, tope) };
@@ -664,6 +681,7 @@ FP.dominio = (function () {
 
   return {
     movimientosDe: movimientosDe, filtrarMovimientos: filtrarMovimientos, ordenarRecientes: ordenarRecientes,
+    esTransferencia: esTransferencia, movimientosContables: movimientosContables,
     resumen: resumen, totalesPorCategoria: totalesPorCategoria,
     desgloseMedioPago: desgloseMedioPago, gastosSegunMedio: gastosSegunMedio,
     estadoTopes: estadoTopes, estadoDeTope: estadoDeTope, estadoDeCategoria: estadoDeCategoria,

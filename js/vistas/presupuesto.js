@@ -39,6 +39,7 @@ FP.vistas.presupuesto = (function () {
     }
 
     cont.appendChild(tarjetaMeta(r, periodo, ctx));
+    cont.appendChild(tarjetaPlanAhorro(periodo, ctx));
 
     /* --------------------------------------------------- Topes ------- */
     const seccion = el('section', { class: 'seccion mt-5' }, [
@@ -173,6 +174,122 @@ FP.vistas.presupuesto = (function () {
     }
 
     return el('section', { class: 'tarjeta' }, nodos);
+  }
+
+  /* ------------------------------------- Plan de ahorro a un objetivo --- */
+
+  /** Porcentaje escrito por la persona ("7,5" o "7.5 %") → fracción. Vacío = 0 %.
+      No usa FP.dinero.leer: con monedas sin decimales (COP) leería "7,5" como 75. */
+  function leerPorcentaje(texto) {
+    const t = String(texto || '').replace('%', '').replace(',', '.').trim();
+    if (t === '') return 0;
+    return /^\d+(\.\d+)?$/.test(t) ? Number(t) / 100 : NaN;
+  }
+
+  /**
+   * «Para llegar a X en N meses necesitas ahorrar Y.» Es una calculadora: no
+   * cambia nada hasta que la persona pulsa «Usar como meta de este mes».
+   */
+  function tarjetaPlanAhorro(periodo, ctx) {
+    const entrada = { objetivo: NaN, meses: NaN, rentabilidad: '' };
+    let plan = null;
+
+    const resultado = el('div', { class: 'mt-4', role: 'status', 'aria-live': 'polite' });
+    const usar = el('button', {
+      type: 'button', class: 'btn btn--primario', disabled: true,
+      onclick: function () { aplicar(); }
+    }, 'Usar como meta de este mes');
+
+    const campoObjetivo = ui.campoMonto({
+      nombre: 'objetivo-ahorro',
+      alEscribir: function (n) { entrada.objetivo = n; actualizar(); },
+      alCambiar: function (n) { entrada.objetivo = n; actualizar(); }
+    });
+    const campoMeses = el('input', {
+      type: 'number', min: '1', max: '600', step: '1', inputmode: 'numeric',
+      name: 'meses-ahorro', placeholder: '12',
+      oninput: function (e) { entrada.meses = e.target.value === '' ? NaN : Number(e.target.value); actualizar(); }
+    });
+    const campoRentabilidad = el('input', {
+      type: 'text', inputmode: 'decimal', autocomplete: 'off',
+      name: 'rentabilidad-ahorro', placeholder: '0',
+      oninput: function (e) { entrada.rentabilidad = e.target.value; actualizar(); }
+    });
+
+    function actualizar() {
+      U.vaciar(resultado);
+      plan = null;
+      usar.disabled = true;
+
+      if (isNaN(entrada.objetivo) && isNaN(entrada.meses)) {
+        resultado.appendChild(el('p', { class: 'texto-sm texto-apagado' },
+          'Escribe cuánto quieres reunir y en cuántos meses.'));
+        return;
+      }
+
+      const p = FP.matematicas.planDeAhorro(entrada.objetivo, entrada.meses, leerPorcentaje(entrada.rentabilidad));
+      const claves = Object.keys(p.errores);
+      if (claves.length) {
+        claves.forEach(function (k) { resultado.appendChild(el('p', { class: 'campo__error' }, p.errores[k])); });
+        return;
+      }
+
+      plan = p;
+      usar.disabled = false;
+      resultado.appendChild(el('p', null, [
+        'Para llegar a ', el('strong', { class: 'num' }, FP.dinero.formato(entrada.objetivo)),
+        ' en ', el('strong', null, entrada.meses + (entrada.meses === 1 ? ' mes' : ' meses')),
+        ' necesitas ahorrar ', el('strong', { class: 'num' }, FP.dinero.formato(p.cuota)), ' cada mes.'
+      ]));
+      resultado.appendChild(el('p', { class: 'texto-sm texto-apagado mt-3' },
+        'Aportarías ' + FP.dinero.formato(p.aportado) + ' en total' +
+        (p.rendimientos > 0
+          ? ' y los rendimientos estimados serían ' + FP.dinero.formato(p.rendimientos) + '.'
+          : '.')));
+    }
+
+    function aplicar() {
+      if (!plan) return;
+      const cuota = plan.cuota;
+      const actual = Number(FP.store.presupuesto(periodo).metaAhorro) || 0;
+      const guardar = function () {
+        FP.store.definirMetaAhorro(periodo, cuota);
+        ui.toast('Meta de ahorro de ' + U.periodoLegible(periodo) + ': ' + FP.dinero.formato(cuota) + '.',
+          { tipo: 'exito' });
+        if (ctx.refrescar) ctx.refrescar();
+      };
+
+      if (actual > 0 && actual !== cuota) {
+        ui.confirmar({
+          titulo: 'Reemplazar la meta de este mes',
+          mensaje: 'Tu meta actual es ' + FP.dinero.formato(actual) + '. Se cambiará por ' + FP.dinero.formato(cuota) + '.',
+          etiquetaConfirmar: 'Reemplazar'
+        }).then(function (ok) { if (ok) guardar(); });
+      } else {
+        guardar();
+      }
+    }
+
+    actualizar();
+
+    return el('section', { class: 'tarjeta mt-4', 'aria-label': 'Calcular cuánto ahorrar al mes' }, [
+      el('h2', { class: 'seccion__titulo' }, '¿Cuánto ahorrar al mes para un objetivo?'),
+      el('p', { class: 'texto-sm texto-apagado mt-3' },
+        'Calcula la cuota mensual para reunir un monto en cierto tiempo. No cambia tu meta hasta que lo decidas.'),
+      el('div', { class: 'rejilla rejilla--3 mt-4' }, [
+        ui.campo({ etiqueta: 'Quiero reunir', control: campoObjetivo }),
+        ui.campo({ etiqueta: 'En cuántos meses', control: campoMeses }),
+        ui.campo({
+          etiqueta: 'Rentabilidad anual (EA, %)', opcional: true, control: campoRentabilidad,
+          ayuda: 'Déjala vacía si guardas el dinero sin rendimiento.'
+        })
+      ]),
+      resultado,
+      el('div', { class: 'fila mt-3' }, [usar]),
+      el('p', { class: 'campo__ayuda mt-3' },
+        'Supone que ahorras al final de cada mes y que la rentabilidad se mantiene constante. ' +
+        'Es una estimación, no una garantía (fórmula de anualidad vencida, Vidarte, 2015).')
+    ]);
   }
 
   function dato(etiqueta, valor) {

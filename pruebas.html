@@ -27,6 +27,7 @@
 <script src="js/util.js"></script>
 <script src="js/store.js"></script>
 <script src="js/dominio.js"></script>
+<script src="js/matematicas.js"></script>
 <script>
 (function () {
   'use strict';
@@ -850,6 +851,184 @@
     S.borrarTodo();
     S.importarJSON(copia);
     igual(D.resumen(ACTUAL).gastosPorMedio.credito, 123456);
+  });
+
+  /* ================================================== Transferencias (T.C) == */
+
+  /* Pagar la tarjeta de crédito con la cuenta de débito mueve dinero que ya se
+     contó como gasto cuando se hizo la compra. Una categoría marcada como
+     transferencia no debe contarlo de nuevo. */
+
+  prueba('Transferencia: el pago de tarjeta no cuenta como gasto ni resta del ahorro real', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '02', monto: 500000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '03', monto: 200000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: MES + '04', monto: 200000, tipo: 'gasto', categoriaId: pagoTC.id, medioPago: 'debito' });
+
+    const r = D.resumen(ACTUAL);
+    igual(r.gastos, 200000, 'solo cuenta la compra, no el pago de la tarjeta');
+    igual(r.ahorroReal, 300000, 'el ahorro real no se resta dos veces');
+    igual(r.gastosPorMedio.debito, 0, 'el pago no cuenta en débito');
+    igual(r.gastosPorMedio.credito, 200000, 'la compra sigue contando en crédito');
+  });
+
+  prueba('Transferencia: el desglose por medio sigue sumando el total de gastos', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '03', monto: 90000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: MES + '04', monto: 40000, tipo: 'gasto', categoriaId: cat('Transporte'), medioPago: 'efectivo' });
+    S.crearMovimiento({ fecha: MES + '05', monto: 90000, tipo: 'gasto', categoriaId: pagoTC.id, medioPago: 'debito' });
+
+    const suma = D.desgloseMedioPago(ACTUAL).reduce(function (acc, m) { return acc + m.total; }, 0);
+    igual(suma, D.resumen(ACTUAL).gastos, 'los medios suman los gastos');
+    igual(suma, 130000);
+  });
+
+  prueba('Transferencia: no entra en los totales por categoría ni en los topes', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.definirTope(ACTUAL, pagoTC.id, 100000);
+    S.crearMovimiento({ fecha: MES + '04', monto: 900000, tipo: 'gasto', categoriaId: pagoTC.id, medioPago: 'debito' });
+
+    igual(D.totalesPorCategoria(ACTUAL, 'gasto').has(pagoTC.id), false, 'sin total por categoría');
+    const fila = D.estadoTopes(ACTUAL).find(function (f) { return f.categoriaId === pagoTC.id; });
+    igual(fila.gastado, 0, 'no se gasta nada contra el tope');
+    igual(fila.estado, 'ok', 'no se dispara el aviso de tope superado');
+    igual(D.alertas(ACTUAL).length, 0, 'no genera alertas');
+  });
+
+  prueba('Transferencia: el movimiento sigue visible y editable en Movimientos', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '04', monto: 900000, tipo: 'gasto', categoriaId: pagoTC.id, medioPago: 'debito' });
+
+    igual(D.movimientosDe(ACTUAL).length, 1, 'el movimiento existe');
+    igual(D.filtrarMovimientos(ACTUAL, {}).length, 1, 'aparece en la lista');
+    igual(D.esTransferencia(D.movimientosDe(ACTUAL)[0]), true);
+  });
+
+  prueba('Transferencia: desmarcarla vuelve a contar el movimiento como gasto', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '04', monto: 70000, tipo: 'gasto', categoriaId: pagoTC.id });
+    igual(D.resumen(ACTUAL).gastos, 0, 'marcada: no cuenta');
+
+    S.actualizarCategoria(pagoTC.id, { esTransferencia: false });
+    igual(D.resumen(ACTUAL).gastos, 70000, 'desmarcada: cuenta de nuevo');
+  });
+
+  prueba('Transferencia: solo existe en categorías de gasto', function () {
+    limpiar();
+    const ingreso = S.crearCategoria({ nombre: 'Reembolso', tipo: 'ingreso', esTransferencia: true });
+    igual(!!ingreso.esTransferencia, false, 'una categoría de ingreso nunca es transferencia');
+    S.crearMovimiento({ fecha: MES + '04', monto: 50000, tipo: 'ingreso', categoriaId: ingreso.id });
+    igual(D.resumen(ACTUAL).ingresos, 50000, 'el ingreso cuenta siempre');
+  });
+
+  prueba('Transferencia: una categoría normal sigue contando igual (sin el campo)', function () {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '04', monto: 120000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    igual(D.resumen(ACTUAL).gastos, 120000);
+    igual(!!S.categoria(cat('Mercado')).esTransferencia, false);
+  });
+
+  prueba('Transferencia: exportar e importar conserva la marca', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '04', monto: 300000, tipo: 'gasto', categoriaId: pagoTC.id });
+    const copia = S.exportarJSON();
+    S.borrarTodo();
+    S.importarJSON(copia);
+    igual(S.categoria(pagoTC.id).esTransferencia, true, 'la marca viaja en la copia');
+    igual(D.resumen(ACTUAL).gastos, 0, 'y sigue sin contar');
+  });
+
+  /* ============================================ Matemáticas financieras == */
+
+  /* Los resultados esperados son los ejemplos resueltos del libro de Vidarte
+     (2015), no cifras calculadas con este mismo código. */
+
+  function cercano(obtenido, esperado, tolerancia, contexto) {
+    if (!(Math.abs(obtenido - esperado) <= tolerancia)) {
+      throw new Error((contexto ? contexto + ': ' : '') +
+        'esperado ' + esperado + ' (±' + tolerancia + '), obtenido ' + obtenido);
+    }
+  }
+
+  const M = FP.matematicas;
+
+  prueba('Matemáticas: valor presente de una anualidad (libro p. 73: 80.000 trimestrales, 24 pagos, 4 %)', function () {
+    cercano(M.valorPresenteAnualidad(80000, 0.04, 24), 1219757.05, 0.01);
+  });
+
+  prueba('Matemáticas: la cuota que equivale a 500.000 en 3 meses al 1,5 % mensual (libro p. 80)', function () {
+    cercano(M.cuotaParaMeta(500000, 0.015, 3), 164191.48, 0.01);
+  });
+
+  prueba('Matemáticas: valor futuro de 60 cuotas mensuales de 164.191,48 al 1,5 % (libro p. 81)', function () {
+    cercano(M.valorFuturoAnualidad(164191.48, 0.015, 60), 15797626.07, 0.02);
+  });
+
+  prueba('Matemáticas: la tasa trimestral equivalente al 1,5 % mensual da el mismo valor futuro (libro p. 82)', function () {
+    const trimestral = M.tasaEquivalente(0.015, 3);
+    cercano(M.valorFuturoAnualidad(500000, trimestral, 20), 15797626.07, 0.02);
+  });
+
+  prueba('Matemáticas: cuota para una meta es la inversa del valor futuro', function () {
+    const meta = 12000000, i = 0.009, n = 18;
+    const cuota = M.cuotaParaMeta(meta, i, n);
+    cercano(M.valorFuturoAnualidad(cuota, i, n), meta, 0.000001, 'ida y vuelta');
+    cierto(cuota < meta / n, 'con rendimiento positivo hay que ahorrar menos que meta/n');
+  });
+
+  prueba('Matemáticas: sin rendimiento (tasa 0) la cuota es la meta dividida entre los periodos', function () {
+    igual(M.cuotaParaMeta(1200000, 0, 12), 100000);
+    igual(M.valorFuturoAnualidad(100000, 0, 12), 1200000);
+    igual(M.valorPresenteAnualidad(100000, 0, 12), 1200000);
+  });
+
+  prueba('Matemáticas: la tasa mensual equivalente a una efectiva anual capitaliza de vuelta a esa anual', function () {
+    const mensual = M.tasaPeriodicaDesdeEA(0.12, 12);
+    cercano(Math.pow(1 + mensual, 12) - 1, 0.12, 1e-12);
+    cierto(mensual < 0.01, 'el 12 % EA equivale a menos del 1 % mensual');
+  });
+
+  prueba('Matemáticas: las entradas inválidas devuelven NaN en vez de un número engañoso', function () {
+    cierto(isNaN(M.cuotaParaMeta(1000, 0.01, 0)), 'cero periodos');
+    cierto(isNaN(M.cuotaParaMeta(1000, 0.01, 2.5)), 'periodos no enteros');
+    cierto(isNaN(M.cuotaParaMeta(1000, -1, 12)), 'tasa de −100 % o menos');
+    cierto(isNaN(M.cuotaParaMeta(NaN, 0.01, 12)), 'meta no numérica');
+    cierto(isNaN(M.tasaEquivalente(0.01, 0)), 'factor cero');
+  });
+
+  prueba('Plan de ahorro: sin rentabilidad es el objetivo dividido entre los meses', function () {
+    const p = M.planDeAhorro(1200000, 12, 0);
+    igual(p.cuota, 100000);
+    igual(p.aportado, 1200000);
+    cercano(p.acumulado, 1200000, 0.000001);
+    igual(p.rendimientos, 0, 'sin rentabilidad no hay rendimientos');
+  });
+
+  prueba('Plan de ahorro: con 12 % EA a 12 meses, cuota = objetivo × i / 0,12 (porque (1+i)^12 = 1,12)', function () {
+    const p = M.planDeAhorro(1200000, 12, 0.12);
+    const i = Math.pow(1.12, 1 / 12) - 1;
+    igual(p.cuota, Math.ceil(1200000 * i / 0.12), 'cuota');
+    cierto(p.cuota < 100000, 'con rentabilidad se ahorra menos que sin ella');
+    cierto(p.acumulado >= 1200000, 'redondear hacia arriba nunca deja la meta corta');
+    cierto(p.rendimientos > 0, 'hay rendimientos');
+    cercano(p.rendimientos, p.acumulado - p.aportado, 0.000001);
+  });
+
+  prueba('Plan de ahorro: valida objetivo, meses y rentabilidad', function () {
+    cierto('objetivo' in M.planDeAhorro(0, 12, 0).errores, 'objetivo cero');
+    cierto('objetivo' in M.planDeAhorro(NaN, 12, 0).errores, 'objetivo no numérico');
+    cierto('meses' in M.planDeAhorro(1000, 0, 0).errores, 'cero meses');
+    cierto('meses' in M.planDeAhorro(1000, 6.5, 0).errores, 'meses con decimales');
+    cierto('meses' in M.planDeAhorro(1000, 601, 0).errores, 'más de 600 meses');
+    cierto('rentabilidad' in M.planDeAhorro(1000, 12, -0.01).errores, 'rentabilidad negativa');
+    cierto('rentabilidad' in M.planDeAhorro(1000, 12, 1.5).errores, 'rentabilidad superior al 100 %');
+    igual(Object.keys(M.planDeAhorro(1000, 12, 0.05).errores).length, 0, 'datos válidos sin errores');
   });
 
   /* ============================================================ Informe == */
