@@ -75,6 +75,9 @@ FP.app = (function () {
   const NAV_SECUNDARIA = ['alertas', 'recurrentes', 'categorias', 'comparar', 'configuracion'];
 
   const mqMovil = window.matchMedia('(max-width: 720px)');
+  /* Hasta 900 px (iPad en vertical, teléfonos grandes en horizontal) las listas largas se
+     muestran como tarjetas: la tabla de Movimientos mide más de 800 px y no cabe. */
+  const mqTarjetas = window.matchMedia('(max-width: 900px)');
   const mqOscuro = window.matchMedia('(prefers-color-scheme: dark)');
 
   let rutaActual = 'inicio';
@@ -107,6 +110,8 @@ FP.app = (function () {
 
     if (mqMovil.addEventListener) mqMovil.addEventListener('change', pintar);
     else if (mqMovil.addListener) mqMovil.addListener(pintar);
+    if (mqTarjetas.addEventListener) mqTarjetas.addEventListener('change', pintar);
+    else if (mqTarjetas.addListener) mqTarjetas.addListener(pintar);
     if (mqOscuro.addEventListener) mqOscuro.addEventListener('change', sincronizarTema);
     else if (mqOscuro.addListener) mqOscuro.addListener(sincronizarTema);
 
@@ -571,6 +576,7 @@ FP.app = (function () {
   /* ---------------------------------------------------------- varios -- */
 
   function esMovil() { return mqMovil.matches; }
+  function usaTarjetas() { return mqTarjetas.matches; }
   function periodoActivo() { return periodo; }
 
   return {
@@ -582,7 +588,8 @@ FP.app = (function () {
     medioActivo: function () { return medioPago; },
     cambiarMedioPago: cambiarMedioPago,
     aplicarTema: aplicarTema,
-    esMovil: esMovil
+    esMovil: esMovil,
+    usaTarjetas: usaTarjetas
   };
 })();
 

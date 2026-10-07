@@ -797,20 +797,6 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   }
   .aviso-mes .enlace { white-space: nowrap; }
 
-  /* Zonas táctiles de al menos 44 × 44 px (WCAG 2.5.5 / guías de Apple y Google). */
-  .btn, .btn--sm { min-height: 44px; }
-  .btn-icono { min-width: 44px; min-height: 44px; }
-  .enlace { min-height: 44px; display: inline-flex; align-items: center; }
-  .grupo-segmentado button { min-height: 44px; }
-  .menu button { min-height: 44px; }
-  select, input[type="text"], input[type="number"], input[type="date"], input[type="month"],
-  input[type="search"], input[type="password"] { min-height: 44px; }
-  .selector-dias input.selector-dias__input { min-height: 44px; width: 4.6rem; }
-  .selector-medio, .selector-dias { padding: var(--e-1) var(--e-3); }
-  .check-linea { min-height: 44px; align-items: center; }
-  .check-linea input { width: 22px; height: 22px; margin-top: 0; }
-  .radio-opcion { min-height: 44px; }
-
   /* El botón flotante se esconde al bajar y reaparece al subir. */
   .fab { transition: transform .2s ease, opacity .2s ease; }
   .fab--oculto { transform: translateY(140px); opacity: 0; pointer-events: none; }
@@ -902,6 +888,26 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
     padding: var(--e-3) var(--e-4) calc(var(--e-4) + env(safe-area-inset-bottom, 0px));
   }
   .dialogo__pie .btn { flex: 1; }
+}
+
+/* Pantallas táctiles (teléfonos, tablets, también en horizontal): objetivos de al menos
+   44 × 44 px (WCAG 2.5.5 y guías de Apple/Google), sin depender del ancho de la ventana. */
+@media (pointer: coarse) {
+  /* Zonas táctiles de al menos 44 × 44 px (WCAG 2.5.5 / guías de Apple y Google). */
+  .btn, .btn--sm { min-height: 44px; }
+  .btn-icono { min-width: 44px; min-height: 44px; }
+  .nav-enlace { min-width: 44px; min-height: 44px; }
+  .selector-medio__input, .selector-mes__input { min-height: 44px; }
+  .enlace { min-height: 44px; display: inline-flex; align-items: center; }
+  .grupo-segmentado button { min-height: 44px; }
+  .menu button { min-height: 44px; }
+  select, input[type="text"], input[type="number"], input[type="date"], input[type="month"],
+  input[type="search"], input[type="password"] { min-height: 44px; }
+  .selector-dias input.selector-dias__input { min-height: 44px; width: 4.6rem; }
+  .selector-medio, .selector-dias { padding: var(--e-1) var(--e-3); }
+  .check-linea { min-height: 44px; align-items: center; }
+  .check-linea input { width: 22px; height: 22px; margin-top: 0; }
+  .radio-opcion { min-height: 44px; }
 }
 
 @keyframes subir-hoja { from { transform: translateY(100%); } to { transform: none; } }

@@ -161,7 +161,7 @@ FP.vistas.movimientos = (function () {
           alHacerClic: function () { FP.formularios.movimiento({ periodo: periodo, alGuardar: ctx.refrescar }); }
         }
       }));
-    } else if (FP.app.esMovil()) {
+    } else if (FP.app.usaTarjetas()) {
       movs.forEach(function (m) { tarjeta.appendChild(fila(m, ctx)); });
     } else {
       tarjeta.appendChild(tabla(movs, ctx));

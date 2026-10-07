@@ -82,7 +82,7 @@ FP.vistas.presupuesto = (function () {
           '.'
         ]));
       }
-    } else if (FP.app.esMovil()) {
+    } else if (FP.app.usaTarjetas()) {
       filas.forEach(function (f) { tarjeta.appendChild(filaTope(f, periodo, ctx)); });
     } else {
       tarjeta.appendChild(tabla(filas, periodo, ctx));
