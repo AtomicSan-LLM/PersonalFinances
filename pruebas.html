@@ -944,6 +944,170 @@
     igual(D.resumen(ACTUAL).gastos, 0, 'y sigue sin contar');
   });
 
+  /* =================================================== Rango de días == */
+
+  /* Un rango {desde, hasta} (días del mes, ambos inclusivos) recorta qué movimientos
+     cuentan. Sin rango, o con 1 al último día, es el mes completo. La meta de ahorro,
+     los topes y los avisos siguen siendo del mes completo. */
+
+  function sembrarRango() {
+    limpiar();
+    S.crearMovimiento({ fecha: MES + '01', monto: 1000000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 100000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'debito' });
+    S.crearMovimiento({ fecha: MES + '10', monto: 200000, tipo: 'gasto', categoriaId: cat('Transporte'), medioPago: 'credito' });
+    S.crearMovimiento({ fecha: MES + '15', monto: 50000, tipo: 'gasto', categoriaId: cat('Mercado'), medioPago: 'efectivo' });
+    S.crearMovimiento({ fecha: MES + '16', monto: 300000, tipo: 'gasto', categoriaId: cat('Vivienda'), medioPago: 'debito' });
+    S.crearMovimiento({ fecha: MES + '28', monto: 400000, tipo: 'ingreso', categoriaId: cat('Otros ingresos') });
+  }
+
+  prueba('Rango: los extremos del rango son inclusivos', function () {
+    sembrarRango();
+    igual(D.movimientosDe(ACTUAL, { desde: 5, hasta: 15 }).length, 3, 'días 5, 10 y 15');
+    igual(D.movimientosDe(ACTUAL, { desde: 5, hasta: 14 }).length, 2, 'el 15 queda fuera');
+    igual(D.movimientosDe(ACTUAL, { desde: 6, hasta: 15 }).length, 2, 'el 5 queda fuera');
+    igual(D.movimientosDe(ACTUAL, { desde: 10, hasta: 10 }).length, 1, 'un solo día');
+  });
+
+  prueba('Rango: sin rango, o del 1 al último día, es igual al mes completo', function () {
+    sembrarRango();
+    const completo = D.resumen(ACTUAL);
+    igual(D.resumen(ACTUAL, null).gastos, completo.gastos, 'null');
+    igual(D.resumen(ACTUAL, { desde: 1, hasta: U.diasEnMes(ACTUAL) }).gastos, completo.gastos, '1 al último día');
+    igual(D.resumen(ACTUAL, { desde: 1, hasta: 31 }).gastos, completo.gastos, 'hasta 31 incluso en meses cortos');
+    igual(completo.gastos, 650000);
+  });
+
+  prueba('Rango: el resumen suma solo los días elegidos', function () {
+    sembrarRango();
+    const r = D.resumen(ACTUAL, { desde: 1, hasta: 15 });
+    igual(r.ingresos, 1000000, 'ingresos del 1 al 15');
+    igual(r.gastos, 350000, 'gastos del 1 al 15');
+    igual(r.ahorroReal, 650000, 'ahorro del rango');
+    igual(r.nMovimientos, 4);
+    igual(r.parcial, true, 'se marca como parcial');
+    igual(D.resumen(ACTUAL).parcial, false, 'el mes completo no es parcial');
+  });
+
+  prueba('Rango: la meta de ahorro se mide siempre contra el mes completo', function () {
+    sembrarRango();
+    S.definirMetaAhorro(ACTUAL, 700000);
+    const completo = D.resumen(ACTUAL);
+    const parcial = D.resumen(ACTUAL, { desde: 1, hasta: 15 });
+    igual(completo.ahorroReal, 750000);
+    igual(parcial.ahorroReal, 650000, 'el ahorro del rango es otro');
+    igual(parcial.ahorroMes, 750000, 'pero el del mes entero se conserva');
+    igual(parcial.cumpleMeta, completo.cumpleMeta, 'cumplimiento de meta no cambia con el rango');
+    igual(parcial.diferenciaMeta, completo.diferenciaMeta, 'diferencia con la meta no cambia');
+    igual(parcial.metaAhorro, 700000);
+  });
+
+  prueba('Rango: los topes y los avisos siguen siendo del mes completo', function () {
+    sembrarRango();
+    S.definirTope(ACTUAL, cat('Vivienda'), 250000);
+    /* Del 1 al 10 no hay gasto de Vivienda (es del día 16), pero el tope del mes sí está superado. */
+    const fila = D.estadoTopes(ACTUAL).find(function (f) { return f.categoriaId === cat('Vivienda'); });
+    igual(fila.estado, 'excedido', 'estadoTopes no recibe rango');
+    igual(D.resumen(ACTUAL, { desde: 1, hasta: 10 }).gastos, 300000);
+  });
+
+  prueba('Rango: totales por categoría y medios de pago del rango, y los medios suman el total', function () {
+    sembrarRango();
+    const rango = { desde: 1, hasta: 15 };
+    const totales = D.totalesPorCategoria(ACTUAL, 'gasto', 'todos', rango);
+    igual(totales.get(cat('Mercado')), 150000, 'Mercado 5 y 15');
+    igual(totales.get(cat('Transporte')), 200000, 'Transporte día 10');
+    igual(totales.has(cat('Vivienda')), false, 'Vivienda es del día 16');
+
+    const medios = D.desgloseMedioPago(ACTUAL, rango);
+    const suma = medios.reduce(function (acc, m) { return acc + m.total; }, 0);
+    igual(suma, D.resumen(ACTUAL, rango).gastos, 'los medios suman los gastos del rango');
+    igual(suma, 350000);
+  });
+
+  prueba('Rango: filtrarMovimientos lo combina con los demás filtros', function () {
+    sembrarRango();
+    const rango = { desde: 1, hasta: 15 };
+    igual(D.filtrarMovimientos(ACTUAL, { rango: rango }).length, 4, 'solo rango');
+    igual(D.filtrarMovimientos(ACTUAL, { rango: rango, tipo: 'gasto' }).length, 3, 'rango + tipo');
+    igual(D.filtrarMovimientos(ACTUAL, { rango: rango, medioPago: 'debito' }).length, 1, 'rango + medio de pago');
+    igual(D.filtrarMovimientos(ACTUAL, { tipo: 'gasto' }).length, 4, 'sin rango sigue siendo el mes');
+  });
+
+  prueba('Rango: las transferencias siguen sin contar como gasto dentro del rango', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '03', monto: 80000, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '04', monto: 500000, tipo: 'gasto', categoriaId: pagoTC.id });
+    const r = D.resumen(ACTUAL, { desde: 1, hasta: 10 });
+    igual(r.gastos, 80000, 'sin la transferencia');
+    igual(r.nMovimientos, 2, 'pero el movimiento sigue contado como movimiento');
+  });
+
+  prueba('Rango: comparar usa los mismos días en los dos meses', function () {
+    limpiar();
+    const anterior = U.sumarMeses(ACTUAL, -1);
+    S.crearMovimiento({ fecha: anterior + '-03', monto: 100, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: anterior + '-20', monto: 900, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '04', monto: 250, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '25', monto: 700, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const c = D.comparar(anterior, ACTUAL, 'todos', { desde: 1, hasta: 10 });
+    igual(c.a.gastos, 100, 'mes base, días 1 al 10');
+    igual(c.b.gastos, 250, 'mes comparado, días 1 al 10');
+    igual(c.categorias[0].a, 100);
+    igual(c.categorias[0].b, 250);
+    igual(D.comparar(anterior, ACTUAL, 'todos').b.gastos, 950, 'sin rango, el mes completo');
+  });
+
+  prueba('Rango: el histórico y la serie mensual aplican el rango a cada mes', function () {
+    limpiar();
+    const anterior = U.sumarMeses(ACTUAL, -1);
+    S.crearMovimiento({ fecha: anterior + '-03', monto: 10, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: anterior + '-25', monto: 90, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '02', monto: 5, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '27', monto: 45, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const rango = { desde: 1, hasta: 15 };
+    const h = D.historico(undefined, rango);
+    igual(h.find(function (f) { return f.periodo === ACTUAL; }).gastos, 5);
+    igual(h.find(function (f) { return f.periodo === anterior; }).gastos, 10);
+    const serie = D.serieMensual(2, rango);
+    igual(serie[serie.length - 1].gastos, 5, 'último mes de la serie');
+    igual(serie[serie.length - 2].gastos, 10, 'mes anterior de la serie');
+    igual(D.historico()[0].gastos, 50, 'sin rango sigue siendo el mes completo');
+  });
+
+  prueba('Rango: validarRango acepta de 1 hasta el máximo de días y rechaza lo demás', function () {
+    igual(Object.keys(D.validarRango(1, 31, 31)).length, 0, '1 al 31');
+    igual(Object.keys(D.validarRango(1, 1, 28)).length, 0, 'un solo día');
+    igual(Object.keys(D.validarRango(10, 10, 30)).length, 0, 'mismo día');
+    cierto('desde' in D.validarRango(0, 10, 31), 'desde 0');
+    cierto('desde' in D.validarRango(-3, 10, 31), 'desde negativo');
+    cierto('hasta' in D.validarRango(1, 32, 31), 'hasta mayor que el máximo');
+    cierto('hasta' in D.validarRango(1, 29, 28), '29 en un mes de 28 días');
+    cierto('desde' in D.validarRango(20, 10, 31), 'desde mayor que hasta');
+    cierto('desde' in D.validarRango(NaN, 10, 31), 'desde vacío');
+    cierto('hasta' in D.validarRango(1, NaN, 31), 'hasta vacío');
+    cierto('desde' in D.validarRango(1.5, 10, 31), 'desde con decimales');
+    cierto('hasta' in D.validarRango(1, 10.5, 31), 'hasta con decimales');
+  });
+
+  prueba('Rango: rangoEsParcial distingue el mes completo de un recorte', function () {
+    igual(D.rangoEsParcial('2026-02', null), false, 'sin rango');
+    igual(D.rangoEsParcial('2026-02', { desde: 1, hasta: 28 }), false, 'febrero completo');
+    igual(D.rangoEsParcial('2026-02', { desde: 1, hasta: 31 }), false, 'más allá del fin de mes');
+    igual(D.rangoEsParcial('2026-02', { desde: 2, hasta: 28 }), true, 'empieza el 2');
+    igual(D.rangoEsParcial('2026-03', { desde: 1, hasta: 30 }), true, 'marzo tiene 31 días');
+    igual(D.rangoEsParcial('2028-02', { desde: 1, hasta: 28 }), true, 'febrero bisiesto tiene 29');
+  });
+
+  prueba('Rango: el texto legible nombra los días y el mes', function () {
+    const t = U.rangoLegible('2026-02', { desde: 3, hasta: 9 });
+    cierto(t.indexOf('3') >= 0 && t.indexOf('9') >= 0, 'incluye los días: ' + t);
+    cierto(t.toLowerCase().indexOf('febrero') >= 0, 'incluye el mes: ' + t);
+    igual(U.rangoLegible('2026-02', { desde: 4, hasta: 4 }).indexOf(' al ') < 0, true, 'un solo día se nombra sin "al"');
+  });
+
   /* ============================================ Matemáticas financieras == */
 
   /* Los resultados esperados son los ejemplos resueltos del libro de Vidarte

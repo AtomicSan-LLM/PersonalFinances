@@ -101,6 +101,18 @@ FP.util = (function () {
     return texto.charAt(0).toUpperCase() + texto.slice(1) + ' ' + p.anio;
   }
 
+  /**
+   * "del 1 al 15 de Octubre 2026" / "el día 4 de Octubre 2026". Con `sinMes`
+   * solo nombra los días ("del 1 al 15"), para vistas que repiten el rango en
+   * varios meses.
+   */
+  function rangoLegible(periodo, rango, sinMes) {
+    if (!rango) return periodoLegible(periodo);
+    const cola = sinMes ? '' : ' de ' + periodoLegible(periodo);
+    if (rango.desde === rango.hasta) return 'el día ' + rango.desde + cola;
+    return 'del ' + rango.desde + ' al ' + rango.hasta + cola;
+  }
+
   function partesPeriodo(periodo) {
     const m = /^(\d{4})-(\d{2})$/.exec(String(periodo || ''));
     if (!m) return null;
@@ -238,7 +250,7 @@ FP.util = (function () {
     $: $, $$: $$, el: el, agregar: agregar, vaciar: vaciar, escapar: escapar, debounce: debounce,
     uid: uid,
     hoyISO: hoyISO, dos: dos,
-    periodoDe: periodoDe, periodoActual: periodoActual, periodoLegible: periodoLegible,
+    periodoDe: periodoDe, periodoActual: periodoActual, periodoLegible: periodoLegible, rangoLegible: rangoLegible,
     partesPeriodo: partesPeriodo, sumarMeses: sumarMeses, diffMeses: diffMeses,
     diasEnMes: diasEnMes, fechaEnPeriodo: fechaEnPeriodo,
     fechaCorta: fechaCorta, fechaLarga: fechaLarga, esFechaValida: esFechaValida,

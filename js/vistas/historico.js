@@ -24,8 +24,11 @@ FP.vistas.historico = (function () {
   let mesesMostrados = 12;
 
   function render(cont, ctx) {
-    const filas = FP.dominio.historico();
-    const conMovimientos = filas.filter(function (f) { return f.nMovimientos > 0; });
+    const rango = ctx.rango;
+    const filas = FP.dominio.historico(undefined, rango);
+    /* "Hay histórico" se decide sobre los meses completos: un rango sin movimientos
+       no debe mostrar la pantalla como si no hubiera datos. */
+    const conMovimientos = FP.dominio.historico().filter(function (f) { return f.nMovimientos > 0; });
 
     if (!conMovimientos.length) {
       cont.appendChild(el('div', { class: 'tarjeta' }, [
@@ -45,6 +48,11 @@ FP.vistas.historico = (function () {
 
     const medio = ctx.medioPago || 'todos';
     const infoMedio = FP.medios.info(medio);
+    if (rango) {
+      cont.appendChild(el('div', { class: 'aviso-medio', style: 'margin:0 0 var(--e-4)' },
+        '📅 Mostrando ' + U.rangoLegible(ctx.periodo, rango, true) + ' de cada mes. ' +
+        'La meta, su cumplimiento y los topes se evalúan sobre el mes completo.'));
+    }
     if (medio !== 'todos') {
       cont.appendChild(el('div', { class: 'aviso-medio', style: 'margin:0 0 var(--e-4)' },
         infoMedio.icono + ' Filtrando los gastos por medio de pago: ' + infoMedio.etiqueta +
@@ -53,7 +61,7 @@ FP.vistas.historico = (function () {
 
     cont.appendChild(tablaResumen(filas, ctx));
 
-    const serie = FP.dominio.serieMensual(mesesMostrados);
+    const serie = FP.dominio.serieMensual(mesesMostrados, rango);
     const etiquetas = serie.map(function (r) { return U.periodoLegible(r.periodo, true); });
 
     const seriesIG = [
@@ -92,18 +100,25 @@ FP.vistas.historico = (function () {
       })
     ]));
 
+    /* La meta es mensual: contra el ahorro de solo unos días no es comparable, así que
+       con un rango parcial se muestra únicamente el ahorro. */
+    const seriesAhorro = [
+      { nombre: 'Ahorro real', color: COLORES.ahorro, valores: serie.map(function (r) { return r.ahorroReal; }) }
+    ];
+    if (!rango) {
+      seriesAhorro.push({
+        nombre: 'Meta de ahorro', color: COLORES.meta, discontinua: true,
+        valores: serie.map(function (r) { return r.metaAhorro; })
+      });
+    }
+
     cont.appendChild(el('section', { class: 'tarjeta mt-4' }, [
       el('h2', { class: 'seccion__titulo', style: 'margin-bottom:12px' }, 'Evolución del ahorro'),
       FP.graficos.lineas({
         etiquetas: etiquetas,
-        series: [
-          { nombre: 'Ahorro real', color: COLORES.ahorro, valores: serie.map(function (r) { return r.ahorroReal; }) },
-          {
-            nombre: 'Meta de ahorro', color: COLORES.meta, discontinua: true,
-            valores: serie.map(function (r) { return r.metaAhorro; })
-          }
-        ],
-        descripcion: 'Ahorro real frente a la meta en los últimos ' + serie.length + ' meses'
+        series: seriesAhorro,
+        descripcion: (rango ? 'Ahorro real' : 'Ahorro real frente a la meta') +
+          ' en los últimos ' + serie.length + ' meses'
       })
     ]));
 
@@ -202,8 +217,9 @@ FP.vistas.historico = (function () {
   function gastoPorCategoria(ctx) {
     const periodo = ctx.periodo;
     const medio = ctx.medioPago || 'todos';
-    const totales = FP.dominio.totalesPorCategoria(periodo, 'gasto', medio);
-    const anterior = FP.dominio.totalesPorCategoria(U.sumarMeses(periodo, -1), 'gasto', medio);
+    const rango = ctx.rango;
+    const totales = FP.dominio.totalesPorCategoria(periodo, 'gasto', medio, rango);
+    const anterior = FP.dominio.totalesPorCategoria(U.sumarMeses(periodo, -1), 'gasto', medio, rango);
 
     const items = [];
     totales.forEach(function (valor, id) {
@@ -229,7 +245,8 @@ FP.vistas.historico = (function () {
       el('h2', { class: 'seccion__titulo', style: 'margin-bottom:4px' },
         'Gasto por categoría' + (medio !== 'todos' ? ' · ' + FP.medios.info(medio).etiqueta : '')),
       el('p', { class: 'texto-sm texto-apagado', style: 'margin-bottom:16px' },
-        U.periodoLegible(periodo) + ', comparado con el mes anterior.'),
+        U.rangoLegible(periodo, rango) + ', comparado con ' +
+        (rango ? 'los mismos días del mes anterior.' : 'el mes anterior.')),
       FP.graficos.barrasHorizontales({ items: items })
     ]);
   }
@@ -239,6 +256,8 @@ FP.vistas.historico = (function () {
     icono: '📈',
     enNavegacion: true,
     usaFiltroMedio: true,
+    usaRangoDias: true,
+    rangoPorMes: true,
     subtitulo: function () {
       const n = FP.dominio.historico().filter(function (r) { return r.nMovimientos > 0; }).length;
       return n ? n + ' mes(es) con información registrada' : 'Sin meses registrados todavía';

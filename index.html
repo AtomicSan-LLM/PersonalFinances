@@ -47,6 +47,13 @@
           <label class="selector-medio__etiqueta" for="input-medio">Medio de pago</label>
           <select id="input-medio" class="selector-medio__input"></select>
         </div>
+        <div class="selector-dias" id="selector-dias" role="group" aria-label="Rango de días del mes" hidden>
+          <label class="selector-dias__etiqueta" for="input-dia-desde">Del día</label>
+          <input type="number" id="input-dia-desde" class="selector-dias__input" min="1" max="31" step="1" inputmode="numeric" aria-describedby="aviso-dias">
+          <label class="selector-dias__etiqueta" for="input-dia-hasta">al</label>
+          <input type="number" id="input-dia-hasta" class="selector-dias__input" min="1" max="31" step="1" inputmode="numeric" aria-describedby="aviso-dias">
+          <button type="button" class="btn btn--sm btn--fantasma" data-accion="mes-completo" hidden>Mes completo</button>
+        </div>
         <div class="selector-mes" id="selector-mes" role="group" aria-label="Selector de mes">
           <button type="button" class="btn-icono" data-mes="anterior" aria-label="Mes anterior">‹</button>
           <label class="visualmente-oculto" for="input-mes">Mes consultado</label>
@@ -58,6 +65,8 @@
         </button>
       </div>
     </header>
+
+    <p class="aviso-dias" id="aviso-dias" role="alert" hidden></p>
 
     <div class="aviso-mes" id="aviso-mes" hidden>
       <span id="aviso-mes-texto"></span>

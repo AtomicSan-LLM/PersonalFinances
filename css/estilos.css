@@ -68,9 +68,15 @@
   --foco: 0 0 0 3px rgba(26, 95, 168, .45);
 
   --ancho-sidebar: 244px;
+
+  /* Controles nativos (listas desplegables, calendarios, barras) siguen el tema
+     de la app: ver data-tema en app.js. */
+  color-scheme: light;
 }
 
 :root[data-tema="oscuro"] {
+  color-scheme: dark;
+
   --bg: #0f1419;
   --superficie: #171d25;
   --superficie-2: #1e2630;
@@ -236,7 +242,7 @@ a { color: var(--primario); }
 .selector-mes__input {
   border: 0; background: transparent; color: var(--texto);
   font: inherit; font-weight: 600; padding: 4px var(--e-2);
-  min-height: 32px; color-scheme: light dark;
+  min-height: 32px;
 }
 
 .selector-medio {
@@ -251,7 +257,34 @@ a { color: var(--primario); }
 .selector-medio__input {
   border: 0; background: transparent; color: var(--texto);
   font: inherit; font-weight: 600; padding: 4px var(--e-1);
-  min-height: 32px; width: auto; color-scheme: light dark;
+  min-height: 32px; width: auto;
+}
+
+/* Rango de días del mes: «Del día [1] al [31]» (Inicio, Movimientos, Histórico, Comparar). */
+.selector-dias {
+  display: flex; align-items: center; gap: var(--e-2);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: var(--e-1) var(--e-2);
+}
+.selector-dias--activo { border-color: var(--primario); background: var(--primario-suave); }
+.selector-dias__etiqueta { font-size: .82rem; font-weight: 600; color: var(--texto-2); white-space: nowrap; }
+.selector-dias input.selector-dias__input {
+  width: 4.2rem; min-height: 32px; padding: 4px var(--e-2);
+  font-weight: 600; text-align: center;
+}
+.selector-dias input.selector-dias__input[aria-invalid="true"] { border-color: var(--error); }
+
+/* Mensaje de error del rango de días (se anuncia con role="alert"). */
+.aviso-dias {
+  margin: 0 var(--e-6) var(--e-4);
+  padding: 10px var(--e-4);
+  background: var(--error-suave);
+  border: 1px solid var(--error);
+  border-radius: var(--radio);
+  color: var(--error);
+  font-size: .9rem; font-weight: 600;
 }
 
 .aviso-medio {
@@ -366,10 +399,17 @@ input[type="search"], input[type="password"], select, textarea {
   border-radius: var(--radio-sm);
   padding: 9px var(--e-3);
   min-height: 40px; width: 100%;
-  color-scheme: light dark;
 }
 textarea { min-height: 72px; resize: vertical; }
 select { cursor: pointer; }
+
+/* Lista desplegable: el menú nativo toma el color de fondo y de texto del tema
+   de la app (no del sistema operativo). Sin esto, con la app en oscuro y el
+   sistema en claro el texto salía claro sobre fondo blanco. */
+select option, select optgroup {
+  background-color: var(--superficie);
+  color: var(--texto);
+}
 
 input[aria-invalid="true"], select[aria-invalid="true"] {
   border-color: var(--error);
@@ -690,6 +730,7 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   .rejilla--panel, .rejilla--3 { grid-template-columns: 1fr; }
   .contenido, .cabecera { padding-left: var(--e-5); padding-right: var(--e-5); }
   .aviso-mes { margin-left: var(--e-5); margin-right: var(--e-5); }
+  .aviso-dias { margin-left: var(--e-5); margin-right: var(--e-5); }
 }
 
 /* --------------------------------------------------------------------------
@@ -708,6 +749,8 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   .cabecera__der { justify-content: space-between; }
   .selector-mes { flex: 1; }
   .selector-medio { flex: 1 1 100%; }
+  .selector-dias { flex: 1 1 100%; flex-wrap: wrap; }
+  .aviso-dias { margin-left: var(--e-4); margin-right: var(--e-4); }
   .selector-medio__input { flex: 1; min-width: 0; }
   .selector-mes__input { flex: 1; min-width: 0; }
   .btn--registrar { display: none; }

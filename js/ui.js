@@ -364,17 +364,18 @@ FP.ui = (function () {
    */
   function tarjetaMediosPago(periodo, opciones) {
     const op = opciones || {};
-    const r = FP.dominio.resumen(periodo);
-    const filas = FP.dominio.desgloseMedioPago(periodo);
+    const r = FP.dominio.resumen(periodo, op.rango);
+    const filas = FP.dominio.desgloseMedioPago(periodo, op.rango);
 
     const nodos = [
       el('h2', { class: 'seccion__titulo', style: 'margin-bottom:4px' }, 'Gastos por medio de pago'),
       el('p', { class: 'texto-sm texto-apagado', style: 'margin-bottom:16px' },
-        U.periodoLegible(periodo) + ' · débito, crédito y efectivo')
+        U.rangoLegible(periodo, r.rango) + ' · débito, crédito y efectivo')
     ];
 
     if (!r.gastos) {
-      nodos.push(el('p', { class: 'texto-sm texto-apagado' }, 'Aún no hay gastos registrados en este mes.'));
+      nodos.push(el('p', { class: 'texto-sm texto-apagado' },
+        r.parcial ? 'No hay gastos registrados en esos días.' : 'Aún no hay gastos registrados en este mes.'));
     } else {
       nodos.push(FP.graficos.barrasHorizontales({
         maximo: r.gastos,
@@ -387,7 +388,7 @@ FP.ui = (function () {
         })
       }));
       nodos.push(el('p', { class: 'texto-sm num mt-3', style: 'font-weight:700' },
-        'Total gastos del mes: ' + FP.dinero.formato(r.gastos)));
+        (r.parcial ? 'Total gastos de esos días: ' : 'Total gastos del mes: ') + FP.dinero.formato(r.gastos)));
     }
 
     if (op.nota) nodos.push(el('p', { class: 'campo__ayuda mt-3' }, op.nota));

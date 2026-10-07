@@ -15,7 +15,7 @@ FP.vistas.inicio = (function () {
 
   function render(cont, ctx) {
     const periodo = ctx.periodo;
-    const r = FP.dominio.resumen(periodo);
+    const r = FP.dominio.resumen(periodo, ctx.rango);
     const hayAlgoEnLaApp = FP.store.state.movimientos.length > 0;
 
     if (!hayAlgoEnLaApp) {
@@ -59,7 +59,7 @@ FP.vistas.inicio = (function () {
     const rejilla = el('div', { class: 'rejilla rejilla--panel mt-5' }, [
       el('div', { class: 'pila pila--4' }, [
         seccionPresupuesto(periodo, ctx),
-        ui.tarjetaMediosPago(periodo)
+        ui.tarjetaMediosPago(periodo, { rango: ctx.rango })
       ]),
       el('div', { class: 'pila pila--4' }, [
         seccionRecientes(periodo, ctx),
@@ -72,14 +72,23 @@ FP.vistas.inicio = (function () {
   /* ------------------------------------------------- Resumen del mes -- */
 
   function tarjetaResumen(r, periodo, ctx) {
-    const nodos = [
-      el('div', { class: 'resumen' }, [
-        item('Ingresos', '↑', FP.dinero.formato(r.ingresos), 'ingreso',
-          r.nMovimientos ? null : 'Sin movimientos aún'),
-        item('Gastos', '↓', FP.dinero.formato(r.gastos), 'gasto', null),
-        item('Ahorro real', '=', FP.dinero.formatoSaldo(r.ahorroReal), null, 'Ingresos − gastos')
-      ])
-    ];
+    const nodos = [];
+
+    /* Con un rango parcial, ingresos, gastos y ahorro son de esos días; la meta,
+       los topes y los avisos siguen siendo del mes completo. */
+    if (r.parcial) {
+      nodos.push(el('div', { class: 'aviso-medio', style: 'margin:0 0 var(--e-4)' },
+        '📅 Mostrando ' + U.rangoLegible(periodo, r.rango) + '. ' +
+        'La meta de ahorro, los topes y los avisos se calculan sobre el mes completo.'));
+    }
+
+    nodos.push(el('div', { class: 'resumen' }, [
+      item('Ingresos', '↑', FP.dinero.formato(r.ingresos), 'ingreso',
+        r.nMovimientos ? null : (r.parcial ? 'Sin movimientos en esos días' : 'Sin movimientos aún')),
+      item('Gastos', '↓', FP.dinero.formato(r.gastos), 'gasto', null),
+      item('Ahorro real', '=', FP.dinero.formatoSaldo(r.ahorroReal),
+        null, r.parcial ? 'Ingresos − gastos de esos días' : 'Ingresos − gastos')
+    ]));
 
     if (r.hayMeta) {
       const pct = U.clamp(r.porcentajeMeta, 0, 100);
@@ -94,7 +103,8 @@ FP.vistas.inicio = (function () {
           'Avance de la meta de ahorro: ' + U.formatoPorcentaje(r.porcentajeMeta, 0)),
         el('div', { class: 'meta__fila' }, [
           el('span', { class: 'texto-sm texto-apagado num' },
-            'Cumplimiento: ' + FP.dinero.formatoSaldo(r.ahorroReal) + ' de ' + FP.dinero.formato(r.metaAhorro)),
+            (r.parcial ? 'Cumplimiento del mes completo: ' : 'Cumplimiento: ') +
+            FP.dinero.formatoSaldo(r.ahorroMes) + ' de ' + FP.dinero.formato(r.metaAhorro)),
           ui.distintivo(
             r.cumpleMeta ? 'Meta cumplida' : 'Meta pendiente',
             r.cumpleMeta ? 'exito' : 'advertencia',
@@ -262,7 +272,7 @@ FP.vistas.inicio = (function () {
   /* --------------------------------------------- Movimientos recientes */
 
   function seccionRecientes(periodo, ctx) {
-    const movs = FP.dominio.ordenarRecientes(FP.dominio.movimientosDe(periodo)).slice(0, 6);
+    const movs = FP.dominio.ordenarRecientes(FP.dominio.movimientosDe(periodo, ctx.rango)).slice(0, 6);
 
     const seccion = el('section', { class: 'seccion', 'aria-label': 'Movimientos recientes' }, [
       ui.cabeceraSeccion('Movimientos recientes', [
@@ -278,8 +288,10 @@ FP.vistas.inicio = (function () {
     if (!movs.length) {
       tarjeta.appendChild(ui.vacio({
         icono: '🧾',
-        titulo: 'Aún no tienes movimientos este mes',
-        texto: 'Registra tu primer ingreso o gasto para empezar a controlar tus finanzas.',
+        titulo: ctx.rango ? 'No hay movimientos en esos días' : 'Aún no tienes movimientos este mes',
+        texto: ctx.rango
+          ? 'Prueba con otro rango de días o vuelve a «Mes completo».'
+          : 'Registra tu primer ingreso o gasto para empezar a controlar tus finanzas.',
         accion: {
           etiqueta: '＋ Registrar movimiento',
           alHacerClic: function () { FP.formularios.movimiento({ periodo: periodo, alGuardar: ctx.refrescar }); }
@@ -327,11 +339,13 @@ FP.vistas.inicio = (function () {
     titulo: 'Inicio',
     icono: '🏠',
     enNavegacion: true,
+    usaRangoDias: true,
     subtitulo: function (ctx) {
-      const r = FP.dominio.resumen(ctx.periodo);
+      const r = FP.dominio.resumen(ctx.periodo, ctx.rango);
+      const donde = U.rangoLegible(ctx.periodo, r.rango);
       return r.nMovimientos
-        ? r.nMovimientos + ' movimiento(s) en ' + U.periodoLegible(ctx.periodo)
-        : 'Sin movimientos en ' + U.periodoLegible(ctx.periodo);
+        ? r.nMovimientos + ' movimiento(s) ' + (r.parcial ? donde : 'en ' + donde)
+        : 'Sin movimientos ' + (r.parcial ? donde : 'en ' + donde);
     },
     render: render
   };

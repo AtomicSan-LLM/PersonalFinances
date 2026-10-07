@@ -45,9 +45,14 @@ FP.vistas.comparar = (function () {
     }
 
     inicializar(ctx);
-    const datos = FP.dominio.comparar(mesA, mesB, ctx.medioPago);
+    const datos = FP.dominio.comparar(mesA, mesB, ctx.medioPago, ctx.rango);
 
     cont.appendChild(selectores(disponibles, ctx));
+    if (ctx.rango) {
+      cont.appendChild(el('div', { class: 'aviso-medio' },
+        '📅 Comparando ' + U.rangoLegible(mesA, ctx.rango, true) + ' de cada uno de los dos meses. ' +
+        'La meta de ahorro y su cumplimiento son del mes completo.'));
+    }
     if (datos.medio !== 'todos') {
       const m = FP.medios.info(datos.medio);
       cont.appendChild(el('div', { class: 'aviso-medio' },
@@ -271,6 +276,8 @@ FP.vistas.comparar = (function () {
     enNavegacion: false,
     ocultarSelectorMes: true,
     usaFiltroMedio: true,
+    usaRangoDias: true,
+    rangoPorMes: true,
     subtitulo: function () { return '¿Estoy mejorando o empeorando?'; },
     render: render
   };

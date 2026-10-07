@@ -93,6 +93,26 @@ Para evitarlo, en **Categorías → Editar** marca **«No cuenta como gasto
   seguridad anteriores siguen funcionando: sin la marca, todo cuenta como antes.
 - Si la desmarcas, sus movimientos vuelven a contar como gasto.
 
+### Rango de días del mes
+
+Además del mes completo, en **Inicio, Movimientos, Histórico y Comparar** puedes
+ver solo una parte del mes con **«Del día [ ] al [ ]»** (en la cabecera, junto al
+selector de mes). Va desde el día 1 hasta el último día del mes consultado (28, 29,
+30 o 31) y el botón **«Mes completo»** lo restablece.
+
+- Ingresos, gastos, ahorro real, totales por categoría y por medio de pago, y la
+  lista de movimientos se calculan **solo con esos días**. Un solo día también sirve
+  (del 4 al 4).
+- **La meta de ahorro, los topes y los avisos son del mes completo**, porque son
+  límites mensuales: medirlos contra unos pocos días daría una falsa sensación de
+  holgura. Las pantallas lo indican con un aviso.
+- En **Histórico** y **Comparar** el mismo rango se aplica a cada mes (por ejemplo,
+  la primera quincena de cada uno); allí el máximo es 31 y un mes más corto llega
+  hasta su último día.
+- El rango se recuerda al cambiar de pantalla y de mes (se recorta a los días que
+  tenga ese mes). Si lo escribes mal (día inicial mayor que el final, fuera del
+  mes, vacío o con decimales) se muestra el motivo y no se cambia nada.
+
 ### Atajos de teclado
 
 - **N** — registrar un movimiento
@@ -196,9 +216,9 @@ ejecuta.
 Abre **`pruebas.html`** en el navegador (o `http://localhost:8765/pruebas.html`
 si usaste el lanzador).
 
-Son 83 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
+Son 96 pruebas sobre las reglas de negocio: cálculo del ahorro real, estados de
 tope, avisos, generación de recurrentes, reasignación de categorías,
-comparación de meses, medio de pago, transferencias, validaciones, copia de
+comparación de meses, medio de pago, transferencias, rango de días, validaciones, copia de
 seguridad y fórmulas financieras (estas últimas comparadas con ejemplos
 resueltos del libro de Vidarte, no con el propio código). Verás en verde las que
 pasan y en rojo las que fallan.
@@ -217,7 +237,8 @@ El objetivo es **WCAG 2.2 AA**:
 - Etiquetas asociadas a cada control y errores enlazados por `aria-describedby`.
 - Objetivos de pulsación de al menos 24 × 24 px.
 - Encabezados semánticos, tablas con `th`/`scope`, enlace para saltar al contenido.
-- Respeta `prefers-reduced-motion` y el tema claro/oscuro del sistema.
+- Respeta `prefers-reduced-motion` y el tema claro/oscuro. Las listas desplegables y
+  los calendarios nativos siguen el tema de la app, no el del sistema operativo.
 
 ---
 

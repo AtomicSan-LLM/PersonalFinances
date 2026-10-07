@@ -99,7 +99,13 @@ FP.vistas.movimientos = (function () {
   function pintar(cont, periodo, ctx) {
     U.vaciar(cont);
     const medio = ctx.medioPago || 'todos';
-    const movs = FP.dominio.filtrarMovimientos(periodo, Object.assign({}, filtros, { medioPago: medio }));
+    const movs = FP.dominio.filtrarMovimientos(periodo,
+      Object.assign({}, filtros, { medioPago: medio, rango: ctx.rango }));
+
+    if (ctx.rango) {
+      cont.appendChild(el('div', { class: 'aviso-medio' },
+        '📅 Mostrando solo los movimientos ' + U.rangoLegible(periodo, ctx.rango) + '.'));
+    }
 
     if (medio !== 'todos') {
       cont.appendChild(el('div', { class: 'aviso-medio' },
@@ -141,7 +147,8 @@ FP.vistas.movimientos = (function () {
           ? 'Ningún movimiento coincide con los filtros'
           : 'Aún no tienes movimientos en ' + U.periodoLegible(periodo),
         texto: hayEnElMes
-          ? 'Prueba a quitar algún filtro o a cambiar el texto de búsqueda.'
+          ? 'Prueba a quitar algún filtro, a cambiar el texto de búsqueda' +
+            (ctx.rango ? ' o a ampliar el rango de días.' : '.')
           : 'Registra tu primer ingreso o gasto para empezar a controlar tus finanzas.',
         accion: hayEnElMes ? {
           etiqueta: 'Limpiar filtros',
@@ -251,9 +258,10 @@ FP.vistas.movimientos = (function () {
     icono: '📋',
     enNavegacion: true,
     usaFiltroMedio: true,
+    usaRangoDias: true,
     filtros: filtros,
     subtitulo: function (ctx) {
-      return 'Ingresos y gastos de ' + U.periodoLegible(ctx.periodo);
+      return 'Ingresos y gastos ' + (ctx.rango ? '' : 'de ') + U.rangoLegible(ctx.periodo, ctx.rango);
     },
     render: render
   };

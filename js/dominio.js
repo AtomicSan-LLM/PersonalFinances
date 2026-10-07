@@ -14,9 +14,49 @@ FP.dominio = (function () {
 
   /* ================================================== consultas base == */
 
+  /* --------------------------------------------- rango de días del mes -- */
+
+  /* Un rango es {desde, hasta}: días del mes, ambos inclusivos. `null` (o sin
+     rango) es el mes completo. Un `hasta` mayor que los días del mes simplemente
+     llega hasta el último día, así el mismo rango sirve para meses de 28 a 31 días. */
+
+  /** Día del mes (1–31) de una fecha "AAAA-MM-DD". */
+  function diaDe(fecha) { return Number(String(fecha).slice(8, 10)); }
+
+  function enRango(mov, rango) {
+    if (!rango) return true;
+    const d = diaDe(mov.fecha);
+    return d >= rango.desde && d <= rango.hasta;
+  }
+
+  /** ¿El rango deja fuera algún día de ese mes? */
+  function rangoEsParcial(periodo, rango) {
+    if (!rango) return false;
+    return rango.desde > 1 || rango.hasta < U.diasEnMes(periodo);
+  }
+
+  /**
+   * Valida un rango contra los días máximos disponibles. Devuelve {campo: mensaje};
+   * vacío si es válido.
+   */
+  function validarRango(desde, hasta, maxDias) {
+    const errores = {};
+    const entero = function (n) { return typeof n === 'number' && isFinite(n) && Math.floor(n) === n; };
+    if (!entero(desde)) errores.desde = 'Escribe el día inicial (un número entero).';
+    else if (desde < 1 || desde > maxDias) errores.desde = 'El día inicial debe estar entre 1 y ' + maxDias + '.';
+    if (!entero(hasta)) errores.hasta = 'Escribe el día final (un número entero).';
+    else if (hasta < 1 || hasta > maxDias) errores.hasta = 'El día final debe estar entre 1 y ' + maxDias + '.';
+    if (!errores.desde && !errores.hasta && desde > hasta) {
+      errores.desde = 'El día inicial no puede ser mayor que el día final.';
+    }
+    return errores;
+  }
+
   /** FR-004: los movimientos pertenecen al mes de su fecha (mes calendario, PA-02). */
-  function movimientosDe(periodo) {
-    return S().movimientos.filter(function (m) { return U.periodoDe(m.fecha) === periodo; });
+  function movimientosDe(periodo, rango) {
+    return S().movimientos.filter(function (m) {
+      return U.periodoDe(m.fecha) === periodo && enRango(m, rango);
+    });
   }
 
   /**
@@ -31,8 +71,8 @@ FP.dominio = (function () {
   }
 
   /** Movimientos del mes que entran en los totales: todos menos las transferencias. */
-  function movimientosContables(periodo) {
-    return movimientosDe(periodo).filter(function (m) { return !esTransferencia(m); });
+  function movimientosContables(periodo, rango) {
+    return movimientosDe(periodo, rango).filter(function (m) { return !esTransferencia(m); });
   }
 
   /** Ordena por fecha descendente y, a igualdad de fecha, por registro más reciente. */
@@ -46,7 +86,7 @@ FP.dominio = (function () {
   /** Aplica los filtros de la pantalla de movimientos. */
   function filtrarMovimientos(periodo, filtros) {
     const f = filtros || {};
-    let lista = movimientosDe(periodo);
+    let lista = movimientosDe(periodo, f.rango);
 
     if (f.tipo && f.tipo !== 'todos') {
       lista = lista.filter(function (m) { return m.tipo === f.tipo; });
@@ -76,41 +116,65 @@ FP.dominio = (function () {
    * FR-005 / FR-017 — Totales del mes y estado de la meta de ahorro.
    * Ahorro real = ingresos − gastos (S-04).
    */
-  function resumen(periodo) {
-    const todos = movimientosDe(periodo);
-    const movs = todos.filter(function (m) { return !esTransferencia(m); });
+  /** Ingresos, gastos y gastos por medio de una lista de movimientos (sin las transferencias). */
+  function totalesDe(lista) {
     let ingresos = 0, gastos = 0;
     const gastosPorMedio = {};
     FP.medios.todos().forEach(function (x) { gastosPorMedio[x.clave] = 0; });
-    movs.forEach(function (m) {
+    lista.forEach(function (m) {
+      if (esTransferencia(m)) return;
       if (m.tipo === 'ingreso') ingresos += m.monto;
       else { gastos += m.monto; gastosPorMedio[FP.medios.de(m)] += m.monto; }
     });
+    return { ingresos: ingresos, gastos: gastos, gastosPorMedio: gastosPorMedio };
+  }
 
-    const ahorroReal = ingresos - gastos;
+  /**
+   * Con `rango`, ingresos, gastos, ahorro real y medios son solo de esos días.
+   * La meta de ahorro es del mes completo, así que su cumplimiento se mide con
+   * `ahorroMes` (el ahorro de todo el mes) y no cambia con el rango.
+   */
+  function resumen(periodo, rango) {
+    const parcial = rangoEsParcial(periodo, rango);
+    const todos = movimientosDe(periodo, parcial ? rango : null);
+    const t = totalesDe(todos);
+
+    const ahorroReal = t.ingresos - t.gastos;
+    let ahorroMes = ahorroReal;
+    let hayMovimientosEnElMes = todos.length > 0;
+    if (parcial) {
+      const mes = movimientosDe(periodo);
+      const tm = totalesDe(mes);
+      ahorroMes = tm.ingresos - tm.gastos;
+      hayMovimientosEnElMes = mes.length > 0;
+    }
+
     const pres = FP.store.presupuesto(periodo);
     const meta = Number(pres.metaAhorro) || 0;
 
     return {
       periodo: periodo,
-      ingresos: ingresos,
-      gastos: gastos,
-      gastosPorMedio: gastosPorMedio,
+      parcial: parcial,
+      rango: parcial ? { desde: rango.desde, hasta: rango.hasta } : null,
+      ingresos: t.ingresos,
+      gastos: t.gastos,
+      gastosPorMedio: t.gastosPorMedio,
       ahorroReal: ahorroReal,
+      ahorroMes: ahorroMes,
       metaAhorro: meta,
       hayMeta: meta > 0,
-      cumpleMeta: meta > 0 && ahorroReal >= meta,
-      diferenciaMeta: ahorroReal - meta,
-      porcentajeMeta: meta > 0 ? (ahorroReal / meta) * 100 : null,
+      cumpleMeta: meta > 0 && ahorroMes >= meta,
+      diferenciaMeta: ahorroMes - meta,
+      porcentajeMeta: meta > 0 ? (ahorroMes / meta) * 100 : null,
       nMovimientos: todos.length,
-      hayDatos: todos.length > 0 || meta > 0 || (pres.topes || []).length > 0
+      hayDatos: hayMovimientosEnElMes || meta > 0 || (pres.topes || []).length > 0
     };
   }
 
   /** FR-012 — Total por categoría en el mes. Devuelve un Map categoriaId → total. */
-  function totalesPorCategoria(periodo, tipo, medio) {
+  function totalesPorCategoria(periodo, tipo, medio, rango) {
     const mapa = new Map();
-    movimientosContables(periodo).forEach(function (m) {
+    movimientosContables(periodo, rango).forEach(function (m) {
       if (tipo && m.tipo !== tipo) return;
       if (medio && medio !== 'todos' && FP.medios.de(m) !== medio) return;
       const k = m.categoriaId || 'sin-categoria';
@@ -130,8 +194,8 @@ FP.dominio = (function () {
    * las filas es SIEMPRE igual al total de gastos del mes (incluye
    * "Sin especificar"), de modo que nunca se contradice con el resumen.
    */
-  function desgloseMedioPago(periodo) {
-    const r = resumen(periodo);
+  function desgloseMedioPago(periodo, rango) {
+    const r = resumen(periodo, rango);
     return FP.medios.todos().map(function (x) {
       const total = r.gastosPorMedio[x.clave] || 0;
       return {
@@ -484,11 +548,11 @@ FP.dominio = (function () {
   }
 
   /** FR-026 — Resumen de los últimos `n` meses con datos (más reciente primero). */
-  function historico(n) {
+  function historico(n, rango) {
     const periodos = periodosConDatos();
     const lista = (n ? periodos.slice(0, n) : periodos);
     return lista.map(function (p) {
-      const r = resumen(p);
+      const r = resumen(p, rango);
       const topes = estadoTopes(p);
       r.excedidas = topes.filter(function (t) { return t.estado === 'excedido'; }).length;
       r.cerca = topes.filter(function (t) { return t.estado === 'cerca'; }).length;
@@ -498,7 +562,7 @@ FP.dominio = (function () {
   }
 
   /** Serie cronológica ascendente de los últimos `n` meses (para gráficos). */
-  function serieMensual(n) {
+  function serieMensual(n, rango) {
     const actual = U.periodoActual();
     const conDatos = periodosConDatos();
     const masAntiguo = conDatos.length ? conDatos[conDatos.length - 1] : actual;
@@ -507,7 +571,7 @@ FP.dominio = (function () {
 
     const serie = [];
     for (let i = cantidad - 1; i >= 0; i--) {
-      serie.push(resumen(U.sumarMeses(actual, -i)));
+      serie.push(resumen(U.sumarMeses(actual, -i), rango));
     }
     return serie;
   }
@@ -515,8 +579,8 @@ FP.dominio = (function () {
   /* ======================================================= comparar === */
 
   /** FR-027 / PA-11 — Comparación de dos meses. */
-  function comparar(periodoA, periodoB, medio) {
-    const a = resumen(periodoA), b = resumen(periodoB);
+  function comparar(periodoA, periodoB, medio, rango) {
+    const a = resumen(periodoA, rango), b = resumen(periodoB, rango);
     const filtrando = !!medio && medio !== 'todos';
 
     /* Ingresos, ahorro real y meta SIEMPRE usan todos los gastos: así no se
@@ -555,8 +619,8 @@ FP.dominio = (function () {
     };
 
     /* Comparación por categoría de gasto. */
-    const totA = totalesPorCategoria(periodoA, 'gasto', medio);
-    const totB = totalesPorCategoria(periodoB, 'gasto', medio);
+    const totA = totalesPorCategoria(periodoA, 'gasto', medio, rango);
+    const totB = totalesPorCategoria(periodoB, 'gasto', medio, rango);
     const ids = new Set();
     totA.forEach(function (_v, k) { ids.add(k); });
     totB.forEach(function (_v, k) { ids.add(k); });
@@ -682,6 +746,7 @@ FP.dominio = (function () {
   return {
     movimientosDe: movimientosDe, filtrarMovimientos: filtrarMovimientos, ordenarRecientes: ordenarRecientes,
     esTransferencia: esTransferencia, movimientosContables: movimientosContables,
+    validarRango: validarRango, rangoEsParcial: rangoEsParcial, diaDe: diaDe,
     resumen: resumen, totalesPorCategoria: totalesPorCategoria,
     desgloseMedioPago: desgloseMedioPago, gastosSegunMedio: gastosSegunMedio,
     estadoTopes: estadoTopes, estadoDeTope: estadoDeTope, estadoDeCategoria: estadoDeCategoria,

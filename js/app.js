@@ -83,6 +83,10 @@ FP.app = (function () {
      Se recuerda al cambiar de pantalla (no entre sesiones) y solo actúa donde la
      vista declara `usaFiltroMedio` (Movimientos, Histórico y Comparar). */
   let medioPago = 'todos';
+  /* Rango de días del mes: null = mes completo, o {desde, hasta}. Como el medio de
+     pago, se recuerda al cambiar de pantalla y solo actúa donde la vista declara
+     `usaRangoDias` (Inicio, Movimientos, Histórico y Comparar). */
+  let rango = null;
   let paramsPendientes = null;
   let renderizando = false;
 
@@ -225,6 +229,81 @@ FP.app = (function () {
 
   function refrescar() { pintar(); }
 
+  /* ------------------------------------------------ rango de días ------ */
+
+  /** Días máximos del selector: los del mes consultado, o 31 si la vista muestra varios meses. */
+  function maxDiasRango(vista) {
+    return vista.rangoPorMes ? 31 : U.diasEnMes(periodo);
+  }
+
+  /**
+   * El rango que realmente aplica en esta vista: se recorta a los días del mes
+   * (el rango 1–31 en febrero es 1–28) y devuelve null si equivale al mes completo.
+   */
+  function rangoEfectivo(vista) {
+    if (!vista.usaRangoDias || !rango) return null;
+    const max = maxDiasRango(vista);
+    const desde = Math.min(rango.desde, max);
+    const hasta = Math.min(rango.hasta, max);
+    return (desde === 1 && hasta === max) ? null : { desde: desde, hasta: hasta };
+  }
+
+  function sincronizarSelectorDias(vista, efectivo) {
+    const caja = document.getElementById('selector-dias');
+    if (!caja) return;
+    caja.hidden = !vista.usaRangoDias;
+    if (!vista.usaRangoDias) { mostrarErrorRango({}); return; }
+
+    const max = maxDiasRango(vista);
+    const inDesde = document.getElementById('input-dia-desde');
+    const inHasta = document.getElementById('input-dia-hasta');
+    inDesde.max = String(max);
+    inHasta.max = String(max);
+    inDesde.value = String(efectivo ? efectivo.desde : 1);
+    inHasta.value = String(efectivo ? efectivo.hasta : max);
+    caja.classList.toggle('selector-dias--activo', !!efectivo);
+    caja.querySelector('[data-accion="mes-completo"]').hidden = !efectivo;
+    mostrarErrorRango({});
+  }
+
+  function mostrarErrorRango(errores) {
+    const aviso = document.getElementById('aviso-dias');
+    const inDesde = document.getElementById('input-dia-desde');
+    const inHasta = document.getElementById('input-dia-hasta');
+    const mensajes = Object.keys(errores).map(function (k) { return errores[k]; });
+
+    aviso.textContent = mensajes.join(' ');
+    aviso.hidden = mensajes.length === 0;
+    [['desde', inDesde], ['hasta', inHasta]].forEach(function (par) {
+      if (errores[par[0]]) par[1].setAttribute('aria-invalid', 'true');
+      else par[1].removeAttribute('aria-invalid');
+    });
+  }
+
+  function leerDia(texto) {
+    return String(texto).trim() === '' ? NaN : Number(texto);
+  }
+
+  /** Aplica lo escrito en «Del día [ ] al [ ]»; si no es válido, avisa y no cambia nada. */
+  function aplicarRangoDesdeCampos() {
+    const vista = RUTAS[rutaActual]();
+    if (!vista.usaRangoDias) return;
+    const max = maxDiasRango(vista);
+    const desde = leerDia(document.getElementById('input-dia-desde').value);
+    const hasta = leerDia(document.getElementById('input-dia-hasta').value);
+
+    const errores = FP.dominio.validarRango(desde, hasta, max);
+    if (Object.keys(errores).length) { mostrarErrorRango(errores); return; }
+
+    rango = (desde === 1 && hasta === max) ? null : { desde: desde, hasta: hasta };
+    pintar();
+  }
+
+  function usarMesCompleto() {
+    rango = null;
+    pintar();
+  }
+
   /* --------------------------------------------------------- pintar --- */
 
   function pintar() {
@@ -234,8 +313,10 @@ FP.app = (function () {
     try {
       const vista = RUTAS[rutaActual]();
       const contenido = document.getElementById('contenido');
+      const rangoVista = rangoEfectivo(vista);
       const ctx = {
         periodo: periodo,
+        rango: rangoVista,
         params: paramsPendientes,
         irA: irA,
         refrescar: refrescar,
@@ -256,6 +337,9 @@ FP.app = (function () {
       selector.hidden = !!vista.ocultarSelectorMes;
       const input = document.getElementById('input-mes');
       if (input.value !== periodo) input.value = periodo;
+
+      /* Rango de días: solo donde la vista lo usa */
+      sincronizarSelectorDias(vista, rangoVista);
 
       /* Filtro de medio de pago: solo donde la vista lo usa */
       const selectorMedio = document.getElementById('selector-medio');
@@ -310,6 +394,14 @@ FP.app = (function () {
     construirSelectorMedio();
     const inputMedio = document.getElementById('input-medio');
     if (inputMedio) inputMedio.addEventListener('change', function (e) { cambiarMedioPago(e.target.value); });
+
+    /* Rango de días del mes */
+    ['input-dia-desde', 'input-dia-hasta'].forEach(function (id) {
+      document.getElementById(id).addEventListener('change', aplicarRangoDesdeCampos);
+    });
+    U.$$('[data-accion="mes-completo"]').forEach(function (b) {
+      b.addEventListener('click', usarMesCompleto);
+    });
 
     U.$$('[data-mes]').forEach(function (b) {
       b.addEventListener('click', function () {
