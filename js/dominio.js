@@ -472,6 +472,24 @@ FP.dominio = (function () {
   }
 
   /**
+   * Compromiso mensual de los recurrentes vigentes en `periodo` (por defecto, el
+   * mes actual). Los de monto variable cuentan con su monto de referencia y las
+   * transferencias (p. ej. pago de tarjeta) no suman como gasto, igual que en los totales.
+   */
+  function compromisoRecurrente(periodo) {
+    const p = periodo || U.periodoActual();
+    const vigentes = S().recurrentes.filter(function (r) { return vigenteEn(r, p); });
+    const gastos = vigentes.filter(function (r) { return r.tipo === 'gasto' && !esTransferencia(r); });
+    const ingresos = vigentes.filter(function (r) { return r.tipo === 'ingreso'; });
+    const total = function (lista) { return U.suma(lista, function (r) { return Number(r.monto) || 0; }); };
+    return {
+      gastos: total(gastos), nGastos: gastos.length,
+      ingresos: total(ingresos), nIngresos: ingresos.length,
+      neto: total(ingresos) - total(gastos)
+    };
+  }
+
+  /**
    * FR-023 / PA-09 — Genera los movimientos de los recurrentes vigentes.
    * Regla adoptada: generación automática hasta el mes actual (nunca meses
    * futuros), con posibilidad de revisar y editar el movimiento generado.
@@ -774,7 +792,7 @@ FP.dominio = (function () {
     coherenciaPresupuesto: coherenciaPresupuesto,
     alertas: alertas, contarAlertas: contarAlertas,
     alertasTodas: alertasTodas, contarAlertasTodas: contarAlertasTodas,
-    generarRecurrentes: generarRecurrentes, vigenteEn: vigenteEn,
+    generarRecurrentes: generarRecurrentes, vigenteEn: vigenteEn, compromisoRecurrente: compromisoRecurrente,
     pendientesDeRevision: pendientesDeRevision, proximosRecurrentes: proximosRecurrentes,
     periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual, totalesSerie: totalesSerie,
     comparar: comparar,

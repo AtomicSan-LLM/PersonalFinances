@@ -27,10 +27,12 @@ FP.vistas.recurrentes = (function () {
       }, '＋ Nuevo recurrente')
     ]));
 
+    if (recs.length) cont.appendChild(tarjetaCompromiso());
+
     /* Pendientes de revisión (recurrentes de monto variable) */
     const pendientes = FP.dominio.pendientesDeRevision();
     if (pendientes.length) {
-      const tarjeta = el('section', { class: 'tarjeta' }, [
+      const tarjeta = el('section', { class: 'tarjeta mt-4' }, [
         el('div', { class: 'fila fila--entre' }, [
           el('h2', { class: 'seccion__titulo' }, 'Movimientos por revisar'),
           ui.distintivo(pendientes.length + ' pendiente(s)', 'advertencia', '👁')
@@ -72,6 +74,22 @@ FP.vistas.recurrentes = (function () {
 
     if (activos.length) cont.appendChild(grupo('Activos', activos, ctx));
     if (inactivos.length) cont.appendChild(grupo('Finalizados o pausados', inactivos, ctx));
+  }
+
+  /** Gastos fijos del mes actual, con los ingresos fijos y lo que queda entre ambos. */
+  function tarjetaCompromiso() {
+    const c = FP.dominio.compromisoRecurrente();
+    return ui.tarjetaSaldo({
+      compacta: true,
+      etiqueta: 'Gastos fijos al mes · ' + c.nGastos + (c.nGastos === 1 ? ' recurrente' : ' recurrentes'),
+      cifra: FP.dinero.formato(c.gastos),
+      pie: 'Recurrentes vigentes en ' + U.periodoLegible(U.periodoActual()) +
+        '. Los de monto variable cuentan con su monto de referencia.',
+      items: [
+        { etiqueta: 'Ingresos fijos', icono: '↑', monto: c.ingresos },
+        { etiqueta: 'Ingresos − gastos fijos', icono: '=', cifra: FP.dinero.formatoSaldo(c.neto) }
+      ]
+    });
   }
 
   function grupo(titulo, lista, ctx) {

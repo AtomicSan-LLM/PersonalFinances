@@ -501,18 +501,20 @@ FP.ui = (function () {
     ]);
   }
 
+  /** `item.cifra` (texto ya formateado, p. ej. con signo) reemplaza a `item.monto`. */
   function itemSaldo(item) {
     const boton = !!item.alHacerClic;
+    const cifra = item.cifra !== undefined ? item.cifra : FP.dinero.formato(item.monto);
     return el(boton ? 'button' : 'div', {
       type: boton ? 'button' : null,
       class: 'tarjeta-saldo__item' + (boton ? '' : ' tarjeta-saldo__item--dato'),
       onclick: item.alHacerClic || null,
       'aria-pressed': (boton && item.presionado !== undefined) ? String(!!item.presionado) : null,
-      'aria-label': boton ? item.etiqueta + ': ' + FP.dinero.formato(item.monto) + (item.accion ? '. ' + item.accion : '') : null
+      'aria-label': boton ? item.etiqueta + ': ' + cifra + (item.accion ? '. ' + item.accion : '') : null
     }, [
       el('span', { class: 'tarjeta-saldo__icono', 'aria-hidden': 'true' }, item.icono),
       el('span', { class: 'tarjeta-saldo__texto' }, [
-        el('span', { class: 'tarjeta-saldo__monto num' }, FP.dinero.formato(item.monto)),
+        el('span', { class: 'tarjeta-saldo__monto num' }, cifra),
         el('span', { class: 'tarjeta-saldo__nombre' }, item.etiqueta)
       ]),
       boton ? el('span', { class: 'tarjeta-saldo__flecha', 'aria-hidden': 'true' },

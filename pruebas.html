@@ -404,6 +404,33 @@
     igual(D.movimientosDe(desde).length, 1);
   });
 
+  prueba('compromisoRecurrente suma solo los recurrentes vigentes del mes', function () {
+    limpiar();
+    S.crearRecurrente({ tipo: 'gasto', monto: 1000000, descripcion: 'Arriendo', categoriaId: cat('Vivienda'), diaMes: 1, desde: ACTUAL });
+    S.crearRecurrente({ tipo: 'gasto', monto: 30000, descripcion: 'Streaming', categoriaId: cat('Entretenimiento'), diaMes: 5, desde: ACTUAL });
+    S.crearRecurrente({ tipo: 'ingreso', monto: 4500000, descripcion: 'Salario', categoriaId: cat('Salario'), diaMes: 30, desde: ACTUAL });
+    S.crearRecurrente({ tipo: 'gasto', monto: 999, descripcion: 'Futuro', categoriaId: cat('Mercado'), diaMes: 1, desde: U.sumarMeses(ACTUAL, 1) });
+    const pausado = S.crearRecurrente({ tipo: 'gasto', monto: 777, descripcion: 'Pausado', categoriaId: cat('Mercado'), diaMes: 1, desde: ACTUAL });
+    S.actualizarRecurrente(pausado.id, { activo: false });
+
+    const c = D.compromisoRecurrente(ACTUAL);
+    igual(c.gastos, 1030000, 'sin el futuro ni el pausado');
+    igual(c.nGastos, 2);
+    igual(c.ingresos, 4500000);
+    igual(c.nIngresos, 1);
+    igual(c.neto, 3470000, 'ingresos − gastos');
+  });
+
+  prueba('compromisoRecurrente no cuenta las transferencias como gasto', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearRecurrente({ tipo: 'gasto', monto: 500000, descripcion: 'Pago tarjeta', categoriaId: pagoTC.id, diaMes: 10, desde: ACTUAL });
+    S.crearRecurrente({ tipo: 'gasto', monto: 20000, descripcion: 'Gimnasio', categoriaId: cat('Salud'), diaMes: 3, desde: ACTUAL });
+    const c = D.compromisoRecurrente(ACTUAL);
+    igual(c.gastos, 20000);
+    igual(c.nGastos, 1);
+  });
+
   prueba('No se generan movimientos de meses futuros', function () {
     limpiar();
     S.crearRecurrente({
