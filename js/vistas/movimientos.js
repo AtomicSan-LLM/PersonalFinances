@@ -29,10 +29,18 @@ FP.vistas.movimientos = (function () {
     }
 
     const lista = el('div');
+    const barra = barraFiltros(periodo, ctx, function () { pintar(lista, periodo, ctx, elegirTipo); });
 
-    cont.appendChild(barraFiltros(periodo, ctx, function () { pintar(lista, periodo, ctx); }));
+    /* Los botones de la tarjeta resumen usan el mismo filtro de tipo que la barra:
+       tocar el ya elegido vuelve a «Todos». */
+    function elegirTipo(tipo) {
+      const destino = filtros.tipo === tipo ? 'todos' : tipo;
+      barra.querySelector('[data-tipo="' + destino + '"]').click();
+    }
+
+    cont.appendChild(barra);
     cont.appendChild(lista);
-    pintar(lista, periodo, ctx);
+    pintar(lista, periodo, ctx, elegirTipo);
   }
 
   /* ------------------------------------------------------- Filtros ---- */
@@ -84,7 +92,7 @@ FP.vistas.movimientos = (function () {
     const hayFiltro = filtros.tipo !== 'todos' || filtros.categoriaId !== 'todas' || filtros.texto ||
       ctx.medioPago !== 'todos';
 
-    return el('div', { class: 'filtros' }, [
+    return el('div', { class: 'tarjeta filtros' }, [
       ui.campo({ etiqueta: 'Tipo', control: grupo }),
       ui.campo({ etiqueta: 'Categoría', control: selCat }),
       el('div', { class: 'filtros__buscar' }, [
@@ -96,7 +104,7 @@ FP.vistas.movimientos = (function () {
 
   /* --------------------------------------------------------- Lista ---- */
 
-  function pintar(cont, periodo, ctx) {
+  function pintar(cont, periodo, ctx, elegirTipo) {
     U.vaciar(cont);
     const medio = ctx.medioPago || 'todos';
     const movs = FP.dominio.filtrarMovimientos(periodo,
@@ -119,25 +127,31 @@ FP.vistas.movimientos = (function () {
       function (m) { return m.monto; });
     const nTransferencias = movs.filter(function (m) { return FP.dominio.esTransferencia(m); }).length;
 
-    cont.appendChild(el('div', { class: 'fila fila--entre mt-3', style: 'margin-bottom:12px' }, [
-      el('p', { class: 'texto-sm texto-apagado' },
-        movs.length === 0 ? 'Ningún movimiento coincide'
-          : movs.length + ' movimiento' + (movs.length === 1 ? '' : 's') +
-            (nTransferencias ? ' (' + nTransferencias + ' sin contar como gasto)' : '')),
-      medio !== 'todos'
-        ? el('p', { class: 'texto-sm num' }, [
-          el('span', { class: 'monto--gasto', style: 'font-weight:700' }, '-' + FP.dinero.formato(gastos))
-        ])
-        : el('p', { class: 'texto-sm num' }, [
-          el('span', { class: 'monto--ingreso', style: 'font-weight:700' }, '+' + FP.dinero.formato(ingresos)),
-          el('span', { class: 'texto-apagado' }, '   ·   '),
-          el('span', { class: 'monto--gasto', style: 'font-weight:700' }, '-' + FP.dinero.formato(gastos)),
-          el('span', { class: 'texto-apagado' }, '   ·   '),
-          el('span', { style: 'font-weight:700' }, FP.dinero.formatoSaldo(ingresos - gastos))
-        ])
-    ]));
+    const cuenta = movs.length === 0 ? 'Ningún movimiento coincide'
+      : movs.length + ' movimiento' + (movs.length === 1 ? '' : 's') +
+        (nTransferencias ? ' (' + nTransferencias + ' sin contar como gasto)' : '');
 
-    const tarjeta = el('div', { class: 'tarjeta' });
+    cont.appendChild(medio !== 'todos'
+      ? ui.tarjetaSaldo({
+        compacta: true,
+        etiqueta: 'Gastos con ' + FP.medios.info(medio).etiqueta + ' · ' + U.rangoLegible(periodo, ctx.rango),
+        cifra: '-' + FP.dinero.formato(gastos),
+        pie: cuenta
+      })
+      : ui.tarjetaSaldo({
+        compacta: true,
+        etiqueta: 'Saldo · ' + U.rangoLegible(periodo, ctx.rango),
+        cifra: FP.dinero.formatoSaldo(ingresos - gastos),
+        pie: cuenta,
+        items: [
+          { etiqueta: 'Ingresos', icono: '↑', monto: ingresos, presionado: filtros.tipo === 'ingreso',
+            accion: 'Mostrar solo ingresos', alHacerClic: function () { elegirTipo('ingreso'); } },
+          { etiqueta: 'Gastos', icono: '↓', monto: gastos, presionado: filtros.tipo === 'gasto',
+            accion: 'Mostrar solo gastos', alHacerClic: function () { elegirTipo('gasto'); } }
+        ]
+      }));
+
+    const tarjeta = el('div', { class: 'tarjeta mt-4' });
 
     if (!movs.length) {
       const hayEnElMes = FP.dominio.movimientosDe(periodo).length > 0;
@@ -200,10 +214,11 @@ FP.vistas.movimientos = (function () {
         el('td', { class: 'nowrap' }, U.fechaCorta(m.fecha)),
         el('td', null, ui.distintivo(esIngreso ? 'Ingreso' : 'Gasto', esIngreso ? 'ingreso' : 'gasto',
           esIngreso ? '↑' : '↓')),
-        el('td', { class: 'nowrap' }, [
-          cat && cat.icono ? el('span', { 'aria-hidden': 'true' }, cat.icono + ' ') : null,
+        el('td', { class: 'nowrap' }, el('span', { class: 'tabla__categoria' }, [
+          el('span', { class: 'movimiento__marca movimiento__marca--' + m.tipo, 'aria-hidden': 'true' },
+            cat && cat.icono ? cat.icono : (esIngreso ? '↑' : '↓')),
           cat ? cat.nombre : 'Sin categoría'
-        ]),
+        ])),
         el('td', { class: 'nowrap' }, celdaMedio(m)),
         el('td', null, [
           el('div', null, m.descripcion || el('span', { class: 'texto-apagado' }, '—')),

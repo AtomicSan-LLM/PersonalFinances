@@ -59,10 +59,10 @@ FP.vistas.historico = (function () {
         '. Ingresos, ahorro real, meta y topes siguen considerando todos los medios de pago.'));
     }
 
-    cont.appendChild(tablaResumen(filas, ctx));
-
     const serie = FP.dominio.serieMensual(mesesMostrados, rango);
     const etiquetas = serie.map(function (r) { return U.periodoLegible(r.periodo, true); });
+
+    cont.appendChild(tarjetaTotales(serie, ctx));
 
     const seriesIG = [
       { nombre: 'Ingresos', color: COLORES.ingreso, valores: serie.map(function (r) { return r.ingresos; }) },
@@ -76,7 +76,7 @@ FP.vistas.historico = (function () {
     }
 
     cont.appendChild(el('section', { class: 'tarjeta mt-4' }, [
-      ui.cabeceraSeccion('Ingresos y gastos', [selectorRango(ctx)]),
+      el('h2', { class: 'seccion__titulo', style: 'margin-bottom:12px' }, 'Ingresos y gastos'),
       FP.graficos.columnas({
         etiquetas: etiquetas,
         series: seriesIG,
@@ -123,6 +123,31 @@ FP.vistas.historico = (function () {
     ]));
 
     cont.appendChild(gastoPorCategoria(ctx));
+    cont.appendChild(tablaResumen(filas, ctx));
+  }
+
+  /* ------------------------------------------- Cifras del periodo ----- */
+
+  /** Selector de meses + tarjeta con el ahorro acumulado y los promedios mensuales. */
+  function tarjetaTotales(serie, ctx) {
+    const t = FP.dominio.totalesSerie(serie);
+    const ventana = serie.length === 1 ? 'este mes' : 'últimos ' + serie.length + ' meses';
+
+    return el('div', null, [
+      ui.cabeceraSeccion('Resumen del periodo', [selectorRango(ctx)]),
+      ui.tarjetaSaldo({
+        etiqueta: 'Ahorro acumulado · ' + ventana,
+        cifra: FP.dinero.formatoSaldo(t.ahorroAcumulado),
+        pie: t.mesesConDatos
+          ? 'Ingresos − gastos de ' + t.mesesConDatos + (t.mesesConDatos === 1 ? ' mes' : ' meses') +
+            ' con movimientos. Los promedios solo cuentan esos meses.'
+          : 'Sin movimientos en este periodo.',
+        items: [
+          { etiqueta: 'Ingreso promedio por mes', icono: '↑', monto: t.ingresoPromedio },
+          { etiqueta: 'Gasto promedio por mes', icono: '↓', monto: t.gastoPromedio }
+        ]
+      })
+    ]);
   }
 
   function selectorRango(ctx) {
@@ -184,7 +209,7 @@ FP.vistas.historico = (function () {
       ]));
     });
 
-    return el('section', { class: 'tarjeta' }, [
+    return el('section', { class: 'tarjeta mt-4' }, [
       ui.cabeceraSeccion('Resumen mensual', [
         el('button', {
           type: 'button', class: 'btn btn--sm',

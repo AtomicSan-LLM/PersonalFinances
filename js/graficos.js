@@ -11,6 +11,9 @@ FP.graficos = (function () {
   const NS = 'http://www.w3.org/2000/svg';
   const U = FP.util;
 
+  /* Ids únicos para los degradados: puede haber varios gráficos en la página. */
+  let contadorAreas = 0;
+
   function svg(etiqueta, attrs) {
     const n = document.createElementNS(NS, etiqueta);
     if (attrs) {
@@ -118,10 +121,11 @@ FP.graficos = (function () {
         const valor = Number(s.valores[i]) || 0;
         const altura = Math.max(esc.max > 0 ? (valor / esc.max) * alto : 0, valor > 0 ? 2 : 0);
         const x = centro - anchoGrupo / 2 + anchoBarra * j;
+        const anchoReal = Math.max(anchoBarra - 4, 1);
         const barra = svg('rect', {
-          x: x, y: m.top + alto - altura,
-          width: Math.max(anchoBarra - 2, 1), height: altura,
-          rx: 3, style: 'fill:' + s.color
+          x: x + 1, y: m.top + alto - altura,
+          width: anchoReal, height: altura,
+          rx: Math.min(6, anchoReal / 2, altura / 2), style: 'fill:' + s.color
         });
         const titulo = svg('title');
         titulo.textContent = etq + ' · ' + s.nombre + ': ' + FP.dinero.formato(valor);
@@ -135,7 +139,7 @@ FP.graficos = (function () {
     });
 
     nodo.appendChild(svg('line', {
-      x1: m.left, y1: m.top + alto, x2: W - m.right, y2: m.top + alto, class: 'rejilla-linea'
+      x1: m.left, y1: m.top + alto, x2: W - m.right, y2: m.top + alto, class: 'eje-linea'
     }));
 
     return envoltura(nodo, series.map(function (s) { return { nombre: s.nombre, color: s.color }; }),
@@ -184,11 +188,30 @@ FP.graficos = (function () {
       const yy = y(v);
       nodo.appendChild(svg('line', {
         x1: m.left, y1: yy, x2: W - m.right, y2: yy,
-        class: 'rejilla-linea', 'stroke-width': Math.abs(v) < 1e-6 ? 1.5 : 1
+        class: Math.abs(v) < 1e-6 ? 'eje-linea' : 'rejilla-linea'
       }));
       const t = svg('text', { x: m.left - 8, y: yy + 4, 'text-anchor': 'end', class: 'eje-texto' });
       t.textContent = compacto(v);
       nodo.appendChild(t);
+    }
+
+    /* Área sombreada bajo la primera serie continua (degradado hacia la línea del 0). */
+    const principal = series.find(function (s) { return !s.discontinua; });
+    if (principal) {
+      const id = 'area-' + (++contadorAreas);
+      const degradado = svg('linearGradient', { id: id, x1: 0, y1: 0, x2: 0, y2: 1 });
+      degradado.appendChild(svg('stop', { offset: '0%', style: 'stop-color:' + principal.color + ';stop-opacity:.22' }));
+      degradado.appendChild(svg('stop', { offset: '100%', style: 'stop-color:' + principal.color + ';stop-opacity:0' }));
+      const defs = svg('defs');
+      defs.appendChild(degradado);
+      nodo.appendChild(defs);
+
+      const base = y(0);
+      const contorno = principal.valores.map(function (v, i) { return x(i) + ',' + y(Number(v) || 0); });
+      nodo.appendChild(svg('polygon', {
+        points: x(0) + ',' + base + ' ' + contorno.join(' ') + ' ' + x(principal.valores.length - 1) + ',' + base,
+        fill: 'url(#' + id + ')'
+      }));
     }
 
     series.forEach(function (s) {
@@ -196,14 +219,15 @@ FP.graficos = (function () {
       nodo.appendChild(svg('polyline', {
         points: puntos, fill: 'none',
         style: 'stroke:' + s.color,
-        'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+        'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
         'stroke-dasharray': s.discontinua ? '6 5' : null
       }));
 
+      /* Puntos huecos, como en la referencia visual. */
       s.valores.forEach(function (v, i) {
         const punto = svg('circle', {
-          cx: x(i), cy: y(Number(v) || 0), r: 3.5,
-          style: 'fill:' + s.color + ';stroke:var(--superficie);stroke-width:1.5'
+          cx: x(i), cy: y(Number(v) || 0), r: 5,
+          style: 'fill:var(--superficie);stroke:' + s.color + ';stroke-width:2.5'
         });
         const titulo = svg('title');
         titulo.textContent = etiquetas[i] + ' · ' + s.nombre + ': ' + FP.dinero.formatoSaldo(Number(v) || 0);

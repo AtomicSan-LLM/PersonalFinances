@@ -5,7 +5,30 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   0. Fuente: Plus Jakarta Sans (variable, OFL — ver fuentes/OFL.txt).
+   Va dentro del repo para que la app funcione sin internet.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("../fuentes/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("../fuentes/plus-jakarta-sans-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* --------------------------------------------------------------------------
    1. Tokens
+   Paleta morado-azul (referencia visual: capturas en referencias-diseno/hubio).
+   Contraste verificado: texto ≥ 4.5:1 y bordes de campos ≥ 3:1 en ambos temas.
    -------------------------------------------------------------------------- */
 :root {
   /* Escala de espaciado: 4 / 8 / 12 / 16 / 24 / 32 / 48 */
@@ -17,31 +40,35 @@
   --e-6: 32px;
   --e-7: 48px;
 
-  --radio: 10px;
-  --radio-sm: 6px;
-  --radio-lg: 16px;
+  --radio: 12px;
+  --radio-sm: 8px;
+  --radio-lg: 20px;
 
-  --fuente: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --fuente-cifras: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+  --fuente: "Plus Jakarta Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fuente-cifras: "Plus Jakarta Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
 
   /* Superficies */
-  --bg: #f4f6f9;
+  --bg: #f3f4fa;
   --superficie: #ffffff;
-  --superficie-2: #f0f3f7;
-  --superficie-3: #e7ecf3;
-  --borde: #d8dee7;
-  --borde-fuerte: #b6c0cd;
+  --superficie-2: #f5f5fc;
+  --superficie-3: #eaebf6;
+  --borde: #e2e4f0;
+  --borde-fuerte: #878ca6;
 
   /* Texto */
-  --texto: #131920;
-  --texto-2: #4d5866;
-  --texto-3: #5f6b7a;
+  --texto: #171a2c;
+  --texto-2: #4a4f66;
+  --texto-3: #5d6279;
 
   /* Roles semánticos */
-  --primario: #1a5fa8;
-  --primario-hover: #164f8d;
-  --primario-suave: #e7f0fa;
+  --primario: #5038d8;
+  --primario-hover: #4129c4;
+  --primario-suave: #efedfd;
   --sobre-primario: #ffffff;
+
+  /* Marca: degradado de la tarjeta principal (texto blanco encima ≥ 5.8:1) */
+  --marca-a: #5b3fe0;
+  --marca-b: #2f5bd8;
 
   --ingreso: #0e6f47;
   --ingreso-suave: #e2f4ec;
@@ -63,9 +90,10 @@
   --medio-efectivo: #0b7a75;
   --medio-sin: #8a94a1;
 
-  --sombra: 0 1px 2px rgba(19, 25, 32, .06), 0 2px 8px rgba(19, 25, 32, .05);
-  --sombra-alta: 0 8px 28px rgba(19, 25, 32, .16);
-  --foco: 0 0 0 3px rgba(26, 95, 168, .45);
+  --sombra: 0 1px 2px rgba(23, 26, 60, .04), 0 8px 24px rgba(23, 26, 60, .06);
+  --sombra-alta: 0 12px 36px rgba(23, 26, 60, .16);
+  --sombra-marca: 0 14px 32px rgba(80, 56, 216, .28);
+  --foco: 0 0 0 3px rgba(80, 56, 216, .45);
 
   --ancho-sidebar: 244px;
 
@@ -77,21 +105,24 @@
 :root[data-tema="oscuro"] {
   color-scheme: dark;
 
-  --bg: #0f1419;
-  --superficie: #171d25;
-  --superficie-2: #1e2630;
-  --superficie-3: #26303c;
-  --borde: #2e3945;
-  --borde-fuerte: #445162;
+  --bg: #0d1020;
+  --superficie: #161a2e;
+  --superficie-2: #1d2238;
+  --superficie-3: #262c45;
+  --borde: #2c3250;
+  --borde-fuerte: #666e98;
 
-  --texto: #eaeef4;
-  --texto-2: #b3bdca;
-  --texto-3: #8b97a6;
+  --texto: #eceefa;
+  --texto-2: #b5bad3;
+  --texto-3: #8f95b2;
 
-  --primario: #6aaef0;
-  --primario-hover: #8bc1f5;
-  --primario-suave: #17293c;
-  --sobre-primario: #0c1620;
+  --primario: #a597ff;
+  --primario-hover: #bcb2ff;
+  --primario-suave: #24224a;
+  --sobre-primario: #120f2e;
+
+  --marca-a: #4a33c9;
+  --marca-b: #2a4fc4;
 
   --ingreso: #52c795;
   --ingreso-suave: #122a20;
@@ -112,9 +143,10 @@
   --medio-efectivo: #5fd0c9;
   --medio-sin: #6e7a89;
 
-  --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 2px 10px rgba(0, 0, 0, .3);
-  --sombra-alta: 0 10px 34px rgba(0, 0, 0, .55);
-  --foco: 0 0 0 3px rgba(106, 174, 240, .5);
+  --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+  --sombra-alta: 0 12px 36px rgba(0, 0, 0, .55);
+  --sombra-marca: 0 14px 32px rgba(0, 0, 0, .45);
+  --foco: 0 0 0 3px rgba(165, 151, 255, .55);
 }
 
 /* --------------------------------------------------------------------------
@@ -137,7 +169,7 @@ body {
   background: var(--bg);
 }
 
-h1, h2, h3, h4 { margin: 0; line-height: 1.25; font-weight: 650; }
+h1, h2, h3, h4 { margin: 0; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
 h2 { font-size: 1.15rem; }
 h3 { font-size: 1rem; }
 p { margin: 0; }
@@ -186,7 +218,13 @@ a { color: var(--primario); }
   padding: 0 var(--e-2);
   font-weight: 700; font-size: .95rem; line-height: 1.2;
 }
-.sidebar__logo { font-size: 1.6rem; }
+.sidebar__logo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: var(--radio);
+  background: linear-gradient(135deg, var(--marca-a), var(--marca-b));
+  box-shadow: var(--sombra-marca);
+  font-size: 1.25rem;
+}
 
 .sidebar__nav { flex: 1; overflow-y: auto; }
 .sidebar__nav ul { display: flex; flex-direction: column; gap: 2px; }
@@ -201,10 +239,10 @@ a { color: var(--primario); }
 }
 .nav-enlace:hover { background: var(--superficie-2); color: var(--texto); }
 .nav-enlace[aria-current="page"] {
-  background: var(--primario-suave);
-  color: var(--primario);
+  background: var(--primario);
+  color: var(--sobre-primario);
   font-weight: 650;
-  box-shadow: inset 3px 0 0 var(--primario);
+  box-shadow: var(--sombra-marca);
 }
 .nav-enlace__icono { font-size: 1.05rem; width: 20px; text-align: center; }
 .nav-enlace__globo {
@@ -321,21 +359,23 @@ a { color: var(--primario); }
 /* --------------------------------------------------------------------------
    4. Botones y controles
    -------------------------------------------------------------------------- */
+/* Botón secundario: relleno suave de la marca (como «Withdraw» en la referencia). */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--e-2);
   min-height: 40px; padding: var(--e-2) var(--e-4);
-  border: 1px solid var(--borde-fuerte);
-  border-radius: var(--radio);
-  background: var(--superficie); color: var(--texto);
-  font: inherit; font-size: .9rem; font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--primario-suave); color: var(--primario);
+  font: inherit; font-size: .9rem; font-weight: 650;
   cursor: pointer; text-decoration: none;
-  transition: background .12s ease, border-color .12s ease;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
-.btn:hover { background: var(--superficie-2); }
+.btn:hover { border-color: var(--primario); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .btn--primario {
   background: var(--primario); border-color: var(--primario); color: var(--sobre-primario);
+  box-shadow: var(--sombra-marca);
 }
 .btn--primario:hover { background: var(--primario-hover); border-color: var(--primario-hover); }
 
@@ -344,7 +384,7 @@ a { color: var(--primario); }
 .btn--peligro:hover { filter: brightness(.92); }
 
 .btn--fantasma { background: transparent; border-color: transparent; color: var(--texto-2); }
-.btn--fantasma:hover { background: var(--superficie-2); color: var(--texto); }
+.btn--fantasma:hover { background: var(--superficie-2); border-color: transparent; color: var(--texto); }
 
 .btn--bloque { width: 100%; }
 .btn--sm { min-height: 32px; padding: var(--e-1) var(--e-3); font-size: .84rem; }
@@ -367,13 +407,13 @@ a { color: var(--primario); }
 
 .grupo-segmentado {
   display: inline-flex; background: var(--superficie-2);
-  border: 1px solid var(--borde); border-radius: var(--radio); padding: 3px; gap: 3px;
+  border: 1px solid var(--borde); border-radius: 999px; padding: 3px; gap: 3px;
 }
 .grupo-segmentado button {
   border: 0; background: transparent; color: var(--texto-2);
   font: inherit; font-size: .87rem; font-weight: 600;
   padding: var(--e-2) var(--e-4); min-height: 32px;
-  border-radius: var(--radio-sm); cursor: pointer;
+  border-radius: 999px; cursor: pointer;
 }
 .grupo-segmentado button[aria-pressed="true"] {
   background: var(--superficie); color: var(--texto); box-shadow: var(--sombra);
@@ -464,6 +504,7 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 .rejilla--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .rejilla--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .rejilla--panel { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; }
+.rejilla--estirar { align-items: stretch; }
 
 /* Resumen del mes */
 .resumen {
@@ -495,11 +536,102 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 .resumen__item--gasto { background: var(--gasto-suave); border-color: transparent; }
 .resumen__item--gasto .resumen__cifra { color: var(--gasto); }
 
+/* Tarjeta principal del Inicio: degradado de marca con texto blanco (≥ 5.8:1). */
+.tarjeta-saldo {
+  position: relative; overflow: hidden;
+  padding: var(--e-5) var(--e-5) var(--e-4);
+  border-radius: var(--radio-lg);
+  background: linear-gradient(135deg, var(--marca-a), var(--marca-b));
+  color: #fff;
+  box-shadow: var(--sombra-marca);
+}
+/* Planos decorativos del fondo, como en la referencia. */
+.tarjeta-saldo::before, .tarjeta-saldo::after {
+  content: ""; position: absolute; pointer-events: none;
+  background: rgba(255, 255, 255, .07); transform: rotate(45deg);
+}
+.tarjeta-saldo::before { width: 260px; height: 260px; right: -90px; top: -150px; border-radius: 40px; }
+.tarjeta-saldo::after { width: 200px; height: 200px; right: 70px; bottom: -150px; border-radius: 32px; }
+.tarjeta-saldo > * { position: relative; }
+.tarjeta-saldo__etiqueta {
+  font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.tarjeta-saldo__cifra {
+  font-size: clamp(2rem, 4.2vw, 2.9rem); font-weight: 700; line-height: 1.1;
+  letter-spacing: -.02em; margin-top: var(--e-2);
+}
+.tarjeta-saldo__pie { font-size: .88rem; margin-top: var(--e-1); }
+.tarjeta-saldo__items {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--e-3);
+  margin-top: var(--e-5);
+}
+.tarjeta-saldo__item {
+  display: flex; align-items: center; gap: var(--e-3);
+  padding: var(--e-3); min-height: 64px;
+  border: 1px solid rgba(255, 255, 255, .22); border-radius: var(--radio);
+  background: rgba(255, 255, 255, .1); color: #fff;
+  font: inherit; text-align: left; cursor: pointer;
+  transition: background-color .15s ease;
+}
+.tarjeta-saldo__item:hover { background: rgba(255, 255, 255, .18); }
+.tarjeta-saldo__item:focus-visible { box-shadow: 0 0 0 3px #fff; }
+.tarjeta-saldo__icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%;
+  background: rgba(255, 255, 255, .2); font-weight: 700;
+}
+.tarjeta-saldo__texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.tarjeta-saldo__monto { font-size: 1.15rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tarjeta-saldo__nombre { font-size: .84rem; }
+.tarjeta-saldo__flecha { font-size: 1.4rem; line-height: 1; }
+.tarjeta-saldo__item[aria-pressed="true"] { background: rgba(255, 255, 255, .28); border-color: #fff; }
+.tarjeta-saldo__item--dato { cursor: default; }
+.tarjeta-saldo__item--dato:hover { background: rgba(255, 255, 255, .1); }
+.aviso-medio + .tarjeta-saldo, .aviso-medio + .aviso-medio { margin-top: var(--e-3); }
+
+/* Variante compacta (Movimientos): cifra a la izquierda y botones a la derecha. */
+.tarjeta-saldo--compacta {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  align-items: center; gap: var(--e-5);
+  padding: var(--e-4) var(--e-5);
+}
+.tarjeta-saldo--compacta .tarjeta-saldo__cifra { font-size: clamp(1.6rem, 3vw, 2.1rem); }
+.tarjeta-saldo--compacta .tarjeta-saldo__items { margin-top: 0; }
+.tarjeta-saldo--compacta:not(:has(.tarjeta-saldo__items)) { grid-template-columns: 1fr; }
+
 /* Meta de ahorro */
-.meta { margin-top: var(--e-5); padding-top: var(--e-5); border-top: 1px solid var(--borde); }
+.meta { display: flex; flex-direction: column; gap: var(--e-1); height: 100%; }
 .meta__fila { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e-3); flex-wrap: wrap; }
 .meta__cifra { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.meta__pct { font-size: 2.2rem; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; margin-top: var(--e-2); }
 .meta__mensaje { font-size: .9rem; font-weight: 600; margin-top: var(--e-2); }
+.meta--vacia { align-items: flex-start; gap: var(--e-2); }
+.meta--vacia .btn { margin-top: var(--e-2); }
+.meta__icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: var(--radio);
+  background: var(--primario-suave); font-size: 1.3rem;
+}
+
+/* Mosaicos del presupuesto (Inicio) */
+.mosaicos { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--e-3); }
+.mosaico {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--e-4);
+  background: var(--superficie); border: 1px solid var(--borde);
+  border-radius: var(--radio-lg); box-shadow: var(--sombra);
+}
+.mosaico--excedido { border-color: var(--error); }
+.mosaico__cabecera { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--e-2); }
+.mosaico__icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--radio);
+  background: var(--primario-suave); font-size: 1.15rem;
+}
+.mosaico__nombre { font-size: .86rem; font-weight: 600; color: var(--texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mosaico__pct { font-size: 1.45rem; font-weight: 700; letter-spacing: -.01em; }
+.mosaico__cifras { font-size: .8rem; color: var(--texto-3); margin-bottom: var(--e-2); }
+.mosaico .distintivo { align-self: flex-start; }
 
 /* Barra de progreso */
 .barra {
@@ -544,9 +676,9 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 }
 .movimiento:last-child { border-bottom: 0; }
 .movimiento__marca {
-  width: 34px; height: 34px; flex: 0 0 34px;
+  width: 42px; height: 42px; flex: 0 0 42px;
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: .95rem; font-weight: 700;
+  font-size: 1.05rem; font-weight: 700;
 }
 .movimiento__marca--ingreso { background: var(--ingreso-suave); color: var(--ingreso); }
 .movimiento__marca--gasto { background: var(--gasto-suave); color: var(--gasto); }
@@ -584,13 +716,22 @@ table.tabla th, table.tabla td {
   text-align: left; padding: 10px var(--e-3);
   border-bottom: 1px solid var(--borde); vertical-align: middle;
 }
+table.tabla td { padding-top: var(--e-3); padding-bottom: var(--e-3); }
 table.tabla th {
-  font-size: .78rem; text-transform: uppercase; letter-spacing: .04em;
+  font-size: .76rem; text-transform: uppercase; letter-spacing: .06em;
   color: var(--texto-3); font-weight: 700; white-space: nowrap;
 }
+/* Encabezado como franja suave con los extremos redondeados. */
+table.tabla thead th { background: var(--superficie-2); border-bottom: 0; }
+/* Encabezados de fila (p. ej. el mes en Histórico): texto normal, no de rótulo. */
+table.tabla tbody th { font-size: .9rem; text-transform: none; letter-spacing: 0; color: var(--texto); font-weight: 600; }
+table.tabla thead th:first-child { border-radius: var(--radio) 0 0 var(--radio); }
+table.tabla thead th:last-child { border-radius: 0 var(--radio) var(--radio) 0; }
+.tabla__categoria { display: inline-flex; align-items: center; gap: var(--e-2); font-weight: 600; }
+.tabla__categoria .movimiento__marca { width: 34px; height: 34px; flex-basis: 34px; font-size: .95rem; }
 table.tabla td.num, table.tabla th.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.tabla tbody tr:hover { background: var(--superficie-2); }
-table.tabla tbody tr:last-child td { border-bottom: 0; }
+table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-bottom: 0; }
 
 /* Tabla que en móvil se apila como tarjetas: ui.apilarTabla() pone en cada celda
    data-etiqueta con el texto de su encabezado. En escritorio no cambia nada. */
@@ -762,9 +903,10 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   margin-top: var(--e-3); font-size: .82rem; color: var(--texto-2);
 }
 .grafico__clave { display: inline-flex; align-items: center; gap: 6px; }
-.grafico__muestra { width: 12px; height: 12px; border-radius: 3px; }
+.grafico__muestra { width: 10px; height: 10px; border-radius: 50%; }
 .eje-texto { font-size: 11px; fill: var(--texto-3); }
-.rejilla-linea { stroke: var(--borde); stroke-width: 1; }
+.rejilla-linea { stroke: var(--borde); stroke-width: 1; stroke-dasharray: 4 4; }
+.eje-linea { stroke: var(--borde-fuerte); stroke-width: 1; }
 
 /* --------------------------------------------------------------------------
    10. Utilidades
@@ -879,6 +1021,21 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   .tarjeta { padding: var(--e-4); border-radius: var(--radio); }
   .rejilla--2, .rejilla--3, .rejilla--panel { grid-template-columns: 1fr; }
 
+  .tarjeta-saldo { padding: var(--e-4); }
+  .tarjeta-saldo__item { min-height: 52px; padding: var(--e-2) var(--e-3); }
+  .tarjeta-saldo__icono { width: 28px; height: 28px; flex-basis: 28px; }
+  .tarjeta-saldo--compacta { grid-template-columns: 1fr; gap: var(--e-3); }
+  /* En la compacta, Ingresos y Gastos van lado a lado para no alargar la pantalla. */
+  .tarjeta-saldo--compacta .tarjeta-saldo__items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tarjeta-saldo--compacta .tarjeta-saldo__item { gap: var(--e-2); padding: var(--e-2) var(--e-3); min-height: 56px; }
+  .tarjeta-saldo--compacta .tarjeta-saldo__icono { width: 28px; height: 28px; flex-basis: 28px; }
+  .tarjeta-saldo--compacta .tarjeta-saldo__monto { font-size: 1rem; }
+  .tarjeta-saldo--compacta .tarjeta-saldo__flecha { display: none; }
+  .tarjeta-saldo--compacta .tarjeta-saldo__item[aria-pressed="true"] .tarjeta-saldo__flecha { display: inline; }
+  .tarjeta-saldo__items { grid-template-columns: 1fr; gap: var(--e-2); margin-top: var(--e-4); }
+  .mosaicos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mosaico { padding: var(--e-3); }
+
   .resumen { grid-template-columns: 1fr; gap: var(--e-3); }
   .resumen__item { display: flex; align-items: center; justify-content: space-between; gap: var(--e-3); }
   .resumen__cifra { margin-top: 0; font-size: 1.35rem; }
@@ -901,7 +1058,7 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   }
   .nav-inferior .nav-enlace span { display: block !important; }
   .nav-inferior .nav-enlace__icono { font-size: 1.2rem; width: auto; }
-  .nav-inferior .nav-enlace[aria-current="page"] { background: var(--primario-suave); }
+  .nav-inferior .nav-enlace[aria-current="page"] { background: var(--primario-suave); color: var(--primario); box-shadow: none; }
   .nav-inferior .nav-enlace__globo {
     position: absolute; transform: translate(16px, -4px);
     font-size: .65rem; min-width: 16px; height: 16px; padding: 0 4px;

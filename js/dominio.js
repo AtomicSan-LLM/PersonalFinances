@@ -576,6 +576,26 @@ FP.dominio = (function () {
     return serie;
   }
 
+  /**
+   * Totales de una serie mensual (tarjeta de cifras del Histórico).
+   * Los promedios dividen solo entre los meses con movimientos: un mes vacío
+   * dentro de la ventana no debe bajar el promedio como si se hubiera gastado 0.
+   */
+  function totalesSerie(serie) {
+    const conDatos = serie.filter(function (r) { return r.nMovimientos > 0; });
+    const n = conDatos.length;
+    const ingresos = U.suma(conDatos, function (r) { return r.ingresos; });
+    const gastos = U.suma(conDatos, function (r) { return r.gastos; });
+    return {
+      mesesConDatos: n,
+      ingresos: ingresos,
+      gastos: gastos,
+      ahorroAcumulado: ingresos - gastos,
+      ingresoPromedio: n ? ingresos / n : 0,
+      gastoPromedio: n ? gastos / n : 0
+    };
+  }
+
   /* ======================================================= comparar === */
 
   /** FR-027 / PA-11 — Comparación de dos meses. */
@@ -756,7 +776,7 @@ FP.dominio = (function () {
     alertasTodas: alertasTodas, contarAlertasTodas: contarAlertasTodas,
     generarRecurrentes: generarRecurrentes, vigenteEn: vigenteEn,
     pendientesDeRevision: pendientesDeRevision, proximosRecurrentes: proximosRecurrentes,
-    periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual,
+    periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual, totalesSerie: totalesSerie,
     comparar: comparar,
     validarMovimiento: validarMovimiento, validarCategoria: validarCategoria,
     validarRecurrente: validarRecurrente, hayErrores: hayErrores

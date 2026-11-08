@@ -1078,6 +1078,34 @@
     igual(D.historico()[0].gastos, 50, 'sin rango sigue siendo el mes completo');
   });
 
+  prueba('totalesSerie: acumula el ahorro y promedia solo los meses con movimientos', function () {
+    limpiar();
+    const haceDos = U.sumarMeses(ACTUAL, -2);
+    S.crearMovimiento({ fecha: haceDos + '-05', monto: 300, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: haceDos + '-06', monto: 100, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 100, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '06', monto: 50, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const serie = D.serieMensual(3);
+    igual(serie.length, 3, 'la ventana incluye el mes vacío');
+    const t = D.totalesSerie(serie);
+    igual(t.mesesConDatos, 2, 'meses con movimientos');
+    igual(t.ingresos, 400, 'ingresos');
+    igual(t.gastos, 150, 'gastos');
+    igual(t.ahorroAcumulado, 250, 'ahorro acumulado = ingresos − gastos');
+    igual(t.ingresoPromedio, 200, 'el mes vacío no baja el promedio de ingresos');
+    igual(t.gastoPromedio, 75, 'el mes vacío no baja el promedio de gastos');
+  });
+
+  prueba('totalesSerie: sin movimientos los promedios son 0, no NaN', function () {
+    limpiar();
+    const t = D.totalesSerie(D.serieMensual(6));
+    igual(t.mesesConDatos, 0);
+    igual(t.ingresoPromedio, 0);
+    igual(t.gastoPromedio, 0);
+    igual(t.ahorroAcumulado, 0);
+  });
+
   prueba('Rango: validarRango acepta de 1 hasta el máximo de días y rechaza lo demás', function () {
     igual(Object.keys(D.validarRango(1, 31, 31)).length, 0, '1 al 31');
     igual(Object.keys(D.validarRango(1, 1, 28)).length, 0, 'un solo día');

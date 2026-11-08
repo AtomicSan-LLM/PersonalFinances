@@ -462,7 +462,11 @@ FP.ui = (function () {
           fila.categoria.nombre + ': ' + U.formatoPorcentaje(fila.porcentaje, 0) + ' del tope'),
 
       el('div', { class: 'tope__pie' }, [
-        el('span', {
+        (sinTope && op.alDefinir) ? el('button', {
+          type: 'button', class: 'btn btn--sm',
+          'aria-label': 'Definir tope de ' + fila.categoria.nombre,
+          onclick: function () { op.alDefinir(fila); }
+        }, '＋ Definir tope') : el('span', {
           class: 'tope__disponible',
           style: excedido ? 'color:var(--error)' : (sinTope ? 'color:var(--texto-3)' : '')
         }, sinTope
@@ -472,6 +476,117 @@ FP.ui = (function () {
             : 'Disponible: ' + FP.dinero.formato(fila.disponible))),
         distintivoEstado(fila.estado, fila.etiquetaEstado)
       ])
+    ]);
+  }
+
+  /**
+   * Tarjeta de cifras con el degradado de la marca (Inicio, Movimientos, Histórico).
+   * opciones = { etiqueta, cifra, pie, compacta, ariaLabel,
+   *   items: [{ etiqueta, icono, monto, accion, alHacerClic, presionado }] }
+   * Un item con alHacerClic es un botón (con aria-pressed si trae `presionado`);
+   * sin él, es solo informativo.
+   */
+  function tarjetaSaldo(opciones) {
+    const op = opciones || {};
+    return el('section', {
+      class: 'tarjeta-saldo' + (op.compacta ? ' tarjeta-saldo--compacta' : ''),
+      'aria-label': op.ariaLabel || op.etiqueta
+    }, [
+      el('div', { class: 'tarjeta-saldo__principal' }, [
+        el('p', { class: 'tarjeta-saldo__etiqueta' }, op.etiqueta),
+        el('p', { class: 'tarjeta-saldo__cifra num' }, op.cifra),
+        op.pie ? el('p', { class: 'tarjeta-saldo__pie' }, op.pie) : null
+      ]),
+      (op.items && op.items.length) ? el('div', { class: 'tarjeta-saldo__items' }, op.items.map(itemSaldo)) : null
+    ]);
+  }
+
+  function itemSaldo(item) {
+    const boton = !!item.alHacerClic;
+    return el(boton ? 'button' : 'div', {
+      type: boton ? 'button' : null,
+      class: 'tarjeta-saldo__item' + (boton ? '' : ' tarjeta-saldo__item--dato'),
+      onclick: item.alHacerClic || null,
+      'aria-pressed': (boton && item.presionado !== undefined) ? String(!!item.presionado) : null,
+      'aria-label': boton ? item.etiqueta + ': ' + FP.dinero.formato(item.monto) + (item.accion ? '. ' + item.accion : '') : null
+    }, [
+      el('span', { class: 'tarjeta-saldo__icono', 'aria-hidden': 'true' }, item.icono),
+      el('span', { class: 'tarjeta-saldo__texto' }, [
+        el('span', { class: 'tarjeta-saldo__monto num' }, FP.dinero.formato(item.monto)),
+        el('span', { class: 'tarjeta-saldo__nombre' }, item.etiqueta)
+      ]),
+      boton ? el('span', { class: 'tarjeta-saldo__flecha', 'aria-hidden': 'true' },
+        item.presionado ? '✓' : '›') : null
+    ]);
+  }
+
+  /** Tarjeta de la meta de ahorro del mes (Inicio y Presupuesto). `r` = dominio.resumen. */
+  function tarjetaMeta(r, periodo, alGuardar) {
+    const editar = function () { FP.formularios.metaAhorro({ periodo: periodo, alGuardar: alGuardar }); };
+    let contenido;
+
+    if (r.hayMeta) {
+      const severidad = r.cumpleMeta ? 'exito' : (r.ahorroReal < 0 ? 'error' : 'advertencia');
+      contenido = el('div', { class: 'meta' }, [
+        el('div', { class: 'meta__fila' }, [
+          el('h2', { class: 'seccion__titulo' }, 'Meta de ahorro'),
+          el('button', { type: 'button', class: 'btn btn--sm', onclick: editar }, 'Editar meta')
+        ]),
+        el('div', { class: 'meta__fila' }, [
+          el('p', { class: 'meta__pct num' }, U.formatoPorcentaje(r.porcentajeMeta, 0)),
+          el('span', { class: 'meta__cifra' }, FP.dinero.formato(r.metaAhorro))
+        ]),
+        barraProgreso(U.clamp(r.porcentajeMeta, 0, 100), severidad,
+          'Avance de la meta de ahorro: ' + U.formatoPorcentaje(r.porcentajeMeta, 0)),
+        el('div', { class: 'meta__fila' }, [
+          el('span', { class: 'texto-sm texto-apagado num' },
+            (r.parcial ? 'Cumplimiento del mes completo: ' : 'Cumplimiento: ') +
+            FP.dinero.formatoSaldo(r.ahorroMes) + ' de ' + FP.dinero.formato(r.metaAhorro)),
+          distintivo(
+            r.cumpleMeta ? 'Meta cumplida' : 'Meta pendiente',
+            r.cumpleMeta ? 'exito' : 'advertencia',
+            r.cumpleMeta ? '✓' : '⏳'
+          )
+        ]),
+        el('p', { class: 'meta__mensaje', style: 'color:var(--' + severidad + ')' },
+          r.cumpleMeta
+            ? 'Vas ' + FP.dinero.formato(r.diferenciaMeta) + ' por encima de tu meta.'
+            : 'Te faltan ' + FP.dinero.formato(Math.abs(r.diferenciaMeta)) + ' para cumplir la meta.')
+      ]);
+    } else {
+      contenido = el('div', { class: 'meta meta--vacia' }, [
+        el('span', { class: 'meta__icono', 'aria-hidden': 'true' }, '🎯'),
+        el('h2', { class: 'seccion__titulo' }, 'Sin meta de ahorro'),
+        el('p', { class: 'texto-sm texto-apagado' },
+          'Define cuánto quieres que te quede este mes para medir tu avance. ' +
+          'Tu ahorro real actual es ' + FP.dinero.formatoSaldo(r.ahorroMes) + '.'),
+        el('button', { type: 'button', class: 'btn btn--primario', onclick: editar }, 'Definir meta')
+      ]);
+    }
+
+    return el('section', { class: 'tarjeta', 'aria-label': 'Meta de ahorro de ' + U.periodoLegible(periodo) }, [contenido]);
+  }
+
+  /** Mosaico compacto de una categoría del presupuesto (rejilla del Inicio). */
+  function mosaicoTope(fila, opciones) {
+    const op = opciones || {};
+    const sinTope = fila.tope === null;
+
+    return el('div', { class: 'mosaico' + (fila.estado === 'excedido' ? ' mosaico--excedido' : '') }, [
+      el('div', { class: 'mosaico__cabecera' }, [
+        el('span', { class: 'mosaico__icono', 'aria-hidden': 'true' }, fila.categoria.icono || '📦'),
+        op.acciones ? op.acciones(fila) : null
+      ]),
+      el('div', { class: 'mosaico__nombre' }, fila.categoria.nombre),
+      el('div', { class: 'mosaico__pct num' }, sinTope ? FP.dinero.formato(fila.gastado) : U.formatoPorcentaje(fila.porcentaje, 0)),
+      sinTope
+        ? null
+        : barraProgreso(fila.porcentaje, FP.dominio.SEVERIDAD_ESTADO[fila.estado],
+          fila.categoria.nombre + ': ' + U.formatoPorcentaje(fila.porcentaje, 0) + ' del tope'),
+      el('div', { class: 'mosaico__cifras num' }, sinTope
+        ? 'Gastado · sin tope definido'
+        : FP.dinero.formato(fila.gastado) + ' de ' + FP.dinero.formato(fila.tope)),
+      sinTope ? null : distintivoEstado(fila.estado, fila.etiquetaEstado)
     ]);
   }
 
@@ -715,7 +830,7 @@ FP.ui = (function () {
     distintivo: distintivo, distintivoEstado: distintivoEstado, distintivoMedio: distintivoMedio,
     barraProgreso: barraProgreso,
     vacio: vacio, esqueleto: esqueleto, cabeceraSeccion: cabeceraSeccion, menuAcciones: menuAcciones,
-    filaMovimiento: filaMovimiento, filaTope: filaTope, tarjetaAlerta: tarjetaAlerta,
+    filaMovimiento: filaMovimiento, filaTope: filaTope, mosaicoTope: mosaicoTope, tarjetaSaldo: tarjetaSaldo, tarjetaMeta: tarjetaMeta, tarjetaAlerta: tarjetaAlerta,
     tarjetaMediosPago: tarjetaMediosPago,
     campo: campo, campoMonto: campoMonto, selectorCategoria: selectorCategoria, selectorTipo: selectorTipo,
     selectorMedioPago: selectorMedioPago

@@ -47,7 +47,18 @@ FP.vistas.inicio = (function () {
       return;
     }
 
-    cont.appendChild(tarjetaResumen(r, periodo, ctx));
+    /* Con un rango parcial, ingresos, gastos y ahorro son de esos días; la meta,
+       los topes y los avisos siguen siendo del mes completo. */
+    if (r.parcial) {
+      cont.appendChild(el('div', { class: 'aviso-medio', style: 'margin:0 0 var(--e-4)' },
+        '📅 Mostrando ' + U.rangoLegible(periodo, r.rango) + '. ' +
+        'La meta de ahorro, los topes y los avisos se calculan sobre el mes completo.'));
+    }
+
+    cont.appendChild(el('div', { class: 'rejilla rejilla--panel rejilla--estirar' }, [
+      tarjetaSaldo(r, periodo, ctx),
+      ui.tarjetaMeta(r, periodo, ctx.refrescar)
+    ]));
 
     const alertas = FP.dominio.alertas(periodo);
     /* El resto de avisos activos que no son de este mes (ver dominio.alertasTodas):
@@ -71,78 +82,22 @@ FP.vistas.inicio = (function () {
 
   /* ------------------------------------------------- Resumen del mes -- */
 
-  function tarjetaResumen(r, periodo, ctx) {
-    const nodos = [];
-
-    /* Con un rango parcial, ingresos, gastos y ahorro son de esos días; la meta,
-       los topes y los avisos siguen siendo del mes completo. */
-    if (r.parcial) {
-      nodos.push(el('div', { class: 'aviso-medio', style: 'margin:0 0 var(--e-4)' },
-        '📅 Mostrando ' + U.rangoLegible(periodo, r.rango) + '. ' +
-        'La meta de ahorro, los topes y los avisos se calculan sobre el mes completo.'));
-    }
-
-    nodos.push(el('div', { class: 'resumen' }, [
-      item('Ingresos', '↑', FP.dinero.formato(r.ingresos), 'ingreso',
-        r.nMovimientos ? null : (r.parcial ? 'Sin movimientos en esos días' : 'Sin movimientos aún')),
-      item('Gastos', '↓', FP.dinero.formato(r.gastos), 'gasto', null),
-      item('Ahorro real', '=', FP.dinero.formatoSaldo(r.ahorroReal),
-        null, r.parcial ? 'Ingresos − gastos de esos días' : 'Ingresos − gastos')
-    ]));
-
-    if (r.hayMeta) {
-      const pct = U.clamp(r.porcentajeMeta, 0, 100);
-      const severidad = r.cumpleMeta ? 'exito' : (r.ahorroReal < 0 ? 'error' : 'advertencia');
-
-      nodos.push(el('div', { class: 'meta' }, [
-        el('div', { class: 'meta__fila' }, [
-          el('h3', null, 'Meta de ahorro'),
-          el('span', { class: 'meta__cifra' }, FP.dinero.formato(r.metaAhorro))
-        ]),
-        ui.barraProgreso(pct, severidad,
-          'Avance de la meta de ahorro: ' + U.formatoPorcentaje(r.porcentajeMeta, 0)),
-        el('div', { class: 'meta__fila' }, [
-          el('span', { class: 'texto-sm texto-apagado num' },
-            (r.parcial ? 'Cumplimiento del mes completo: ' : 'Cumplimiento: ') +
-            FP.dinero.formatoSaldo(r.ahorroMes) + ' de ' + FP.dinero.formato(r.metaAhorro)),
-          ui.distintivo(
-            r.cumpleMeta ? 'Meta cumplida' : 'Meta pendiente',
-            r.cumpleMeta ? 'exito' : 'advertencia',
-            r.cumpleMeta ? '✓' : '⏳'
-          )
-        ]),
-        el('p', { class: 'meta__mensaje', style: 'color:var(--' + severidad + ')' },
-          r.cumpleMeta
-            ? 'Vas ' + FP.dinero.formato(r.diferenciaMeta) + ' por encima de tu meta.'
-            : 'Te faltan ' + FP.dinero.formato(Math.abs(r.diferenciaMeta)) + ' para cumplir la meta.')
-      ]));
-    } else {
-      nodos.push(el('div', { class: 'meta fila fila--entre' }, [
-        el('div', null, [
-          el('h3', null, 'Sin meta de ahorro'),
-          el('p', { class: 'texto-sm texto-apagado mt-3' },
-            'Define cuánto quieres que te quede este mes para medir tu avance.')
-        ]),
-        el('button', {
-          type: 'button', class: 'btn',
-          onclick: function () { FP.formularios.metaAhorro({ periodo: periodo, alGuardar: ctx.refrescar }); }
-        }, 'Definir meta')
-      ]));
-    }
-
-    return el('section', { class: 'tarjeta', 'aria-label': 'Resumen de ' + U.periodoLegible(periodo) }, nodos);
-  }
-
-  function item(etiqueta, icono, cifra, variante, pie) {
-    return el('div', { class: 'resumen__item' + (variante ? ' resumen__item--' + variante : '') }, [
-      el('div', null, [
-        el('span', { class: 'resumen__etiqueta' }, [
-          el('span', { 'aria-hidden': 'true' }, icono), etiqueta
-        ]),
-        el('div', { class: 'resumen__cifra' }, cifra),
-        pie ? el('div', { class: 'resumen__pie' }, pie) : null
-      ])
-    ]);
+  /** Tarjeta principal: ahorro real grande; ingresos y gastos llevan a sus movimientos. */
+  function tarjetaSaldo(r, periodo, ctx) {
+    return ui.tarjetaSaldo({
+      ariaLabel: 'Resumen de ' + U.periodoLegible(periodo),
+      etiqueta: 'Ahorro real · ' + U.rangoLegible(periodo, r.rango),
+      cifra: FP.dinero.formatoSaldo(r.ahorroReal),
+      pie: !r.nMovimientos
+        ? (r.parcial ? 'Sin movimientos en esos días' : 'Sin movimientos aún')
+        : (r.parcial ? 'Ingresos − gastos de esos días' : 'Ingresos − gastos'),
+      items: [
+        { etiqueta: 'Ingresos', icono: '↑', monto: r.ingresos, accion: 'Ver movimientos',
+          alHacerClic: function () { ctx.irA('movimientos', { tipo: 'ingreso' }); } },
+        { etiqueta: 'Gastos', icono: '↓', monto: r.gastos, accion: 'Ver movimientos',
+          alHacerClic: function () { ctx.irA('movimientos', { tipo: 'gasto' }); } }
+      ]
+    });
   }
 
   /* ------------------------------------------------------- Alertas ---- */
@@ -227,7 +182,7 @@ FP.vistas.inicio = (function () {
       ])
     ]);
 
-    const tarjeta = el('div', { class: 'tarjeta' });
+    const tarjeta = el('div', { class: filas.length ? '' : 'tarjeta' });
 
     if (!filas.length) {
       tarjeta.appendChild(ui.vacio({
@@ -240,8 +195,10 @@ FP.vistas.inicio = (function () {
         }
       }));
     } else {
+      const mosaicos = el('div', { class: 'mosaicos' });
+      tarjeta.appendChild(mosaicos);
       filas.slice(0, 6).forEach(function (fila) {
-        tarjeta.appendChild(ui.filaTope(fila, {
+        mosaicos.appendChild(ui.mosaicoTope(fila, {
           acciones: function (f) {
             return ui.menuAcciones([
               {
