@@ -391,7 +391,48 @@ FP.dinero = (function () {
     return negativo ? -n : n;
   }
 
+  /** Separador decimal de la configuración regional («,» en es-CO, «.» en en-US). */
+  function separadorDecimal() {
+    try {
+      const p = new Intl.NumberFormat(cfg().locale).formatToParts(1.5)
+        .find(function (x) { return x.type === 'decimal'; });
+      return p ? p.value : ',';
+    } catch (e) { return ','; }
+  }
+
+  const MAX_ENTEROS = 12;
+
+  /**
+   * Da formato a un monto MIENTRAS se escribe: deja solo dígitos, pone los
+   * separadores de miles («1250000» → «1.250.000») y descarta lo demás (letras,
+   * signos, símbolos). Si la moneda usa decimales, admite un separador decimal
+   * y tantos decimales como tenga configurados. Lo que devuelve lo entiende leer().
+   */
+  function mientrasEscribe(texto) {
+    const c = cfg();
+    const s = String(texto === null || texto === undefined ? '' : texto);
+    const sep = separadorDecimal();
+    const corte = c.decimales > 0 ? s.indexOf(sep) : -1;
+
+    let entero = (corte >= 0 ? s.slice(0, corte) : s).replace(/\D/g, '')
+      .replace(/^0+(?=\d)/, '').slice(0, MAX_ENTEROS);
+    const decimal = corte >= 0 ? s.slice(corte + 1).replace(/\D/g, '').slice(0, c.decimales) : '';
+
+    if (!entero && corte < 0) return '';
+    if (!entero) entero = '0';
+
+    let agrupado;
+    try {
+      agrupado = new Intl.NumberFormat(c.locale, { maximumFractionDigits: 0, useGrouping: 'always' })
+        .format(Number(entero));
+    } catch (e) { agrupado = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+    return agrupado + (corte >= 0 ? sep + decimal : '');
+  }
+
   return {
+    mientrasEscribe: mientrasEscribe,
+    separadorDecimal: separadorDecimal,
     formato: formato,
     formatoConSigno: formatoConSigno,
     formatoSaldo: formatoSaldo,
