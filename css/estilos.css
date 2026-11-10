@@ -638,6 +638,7 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 .meta__pct { font-size: 2.2rem; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; margin-top: var(--e-2); }
 .meta__mensaje { font-size: .9rem; font-weight: 600; margin-top: var(--e-2); }
 .meta--vacia { align-items: flex-start; gap: var(--e-2); }
+.meta__vacia-texto { display: flex; flex-direction: column; gap: var(--e-2); }
 .meta--vacia .btn { margin-top: var(--e-2); }
 .meta__icono {
   display: inline-flex; align-items: center; justify-content: center;
@@ -813,6 +814,22 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
 .menu button:hover { background: var(--superficie-2); }
 .menu button.peligro { color: var(--error); }
 
+/* El mismo menú en el teléfono: hoja inferior con botones grandes (ui.menuAcciones). */
+.lista-acciones { display: flex; flex-direction: column; gap: 2px; }
+.lista-acciones__item {
+  display: flex; align-items: center; gap: var(--e-3);
+  width: 100%; min-height: 52px; padding: var(--e-2) var(--e-3);
+  border: 0; border-radius: var(--radio); background: transparent; color: var(--texto);
+  font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.lista-acciones__item:hover { background: var(--superficie-2); }
+.lista-acciones__item.peligro { color: var(--error); }
+.lista-acciones__icono { width: 24px; text-align: center; }
+
+/* Contenido que solo existe en un tamaño de pantalla. */
+@media (min-width: 721px) { .solo-movil { display: none !important; } }
+@media (max-width: 720px) { .solo-escritorio { display: none !important; } }
+
 /* Filtros */
 .filtros {
   display: flex; align-items: flex-end; gap: var(--e-3);
@@ -947,6 +964,11 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
 .grafico__clave { display: inline-flex; align-items: center; gap: 6px; }
 .grafico__muestra { width: 10px; height: 10px; border-radius: 50%; }
 .eje-texto { font-size: 11px; fill: var(--texto-3); }
+/* Mes resaltado y zonas tocables de la gráfica del Inicio (móvil). */
+.eje-texto--activo { fill: var(--primario); font-weight: 700; }
+.grafico__resalte { fill: var(--primario-suave); }
+.grafico__zona { fill: transparent; cursor: pointer; outline: none; }
+.grafico__zona:focus-visible { stroke: var(--primario); stroke-width: 2; }
 .rejilla-linea { stroke: var(--borde); stroke-width: 1; stroke-dasharray: 4 4; }
 .eje-linea { stroke: var(--borde-fuerte); stroke-width: 1; }
 
@@ -1113,6 +1135,45 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
   .mosaicos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mosaico { padding: var(--e-3); }
 
+  /* ---- Inicio en el teléfono: una columna con separación uniforme ---- */
+  .inicio-movil { display: flex; flex-direction: column; gap: var(--e-5); }
+  .inicio-movil > *, .inicio-movil > .tarjeta, .inicio-movil > .tarjeta-saldo { margin-top: 0; margin-bottom: 0; }
+
+  /* Saldo: Ingresos y Gastos lado a lado. Cada uno es «ícono + nombre» arriba y la
+     cifra debajo, a todo el ancho, para que nunca se recorte. */
+  .tarjeta-saldo--fila .tarjeta-saldo__items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tarjeta-saldo--fila .tarjeta-saldo__item {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
+    gap: var(--e-1) var(--e-2); padding: 10px var(--e-3); min-height: 64px;
+  }
+  .tarjeta-saldo--fila .tarjeta-saldo__icono { width: 22px; height: 22px; flex-basis: 22px; font-size: .78rem; }
+  .tarjeta-saldo--fila .tarjeta-saldo__texto { display: contents; }
+  .tarjeta-saldo--fila .tarjeta-saldo__nombre { grid-row: 1; grid-column: 2; }
+  .tarjeta-saldo--fila .tarjeta-saldo__monto { grid-row: 2; grid-column: 1 / -1; font-size: 1.05rem; }
+  .tarjeta-saldo--fila .tarjeta-saldo__flecha { display: none; }
+
+  /* Meta sin definir: una fila baja (ícono · texto · botón) en vez de media pantalla. */
+  .meta--vacia { flex-direction: row; align-items: center; gap: var(--e-3); }
+  .meta--vacia .meta__icono { width: 40px; height: 40px; flex: 0 0 40px; font-size: 1.15rem; }
+  .meta__vacia-texto { flex: 1; min-width: 0; gap: 2px; }
+  .meta--vacia .btn { margin-top: 0; flex: 0 0 auto; }
+
+  /* Presupuesto del Inicio como carrusel: se desliza con el dedo y llega al borde de la pantalla. */
+  .mosaicos--carrusel {
+    display: flex; gap: var(--e-3);
+    margin: 0 calc(-1 * var(--e-4)); padding: 2px var(--e-4) var(--e-2);
+    overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: var(--e-4);
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .mosaicos--carrusel::-webkit-scrollbar { display: none; }
+  .mosaicos--carrusel > .mosaico { flex: 0 0 158px; min-width: 0; scroll-snap-align: start; }
+  .mosaico--mas {
+    align-items: flex-start; justify-content: center; gap: var(--e-1);
+    font: inherit; text-align: left; color: var(--texto); cursor: pointer;
+    background: var(--primario-suave); border-color: transparent;
+  }
+  .mosaico__enlace { margin-top: var(--e-2); font-size: .86rem; font-weight: 700; color: var(--primario); }
+
   .resumen { grid-template-columns: 1fr; gap: var(--e-3); }
   .resumen__item { display: flex; align-items: center; justify-content: space-between; gap: var(--e-3); }
   .resumen__cifra { margin-top: 0; font-size: 1.35rem; }
@@ -1204,6 +1265,10 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
   .chip-hoy::after { inset: -4px; }
   /* «Septiembre de 2026» no cabe entre las dos flechas: se usa «Sep 2026». */
   .mosaico__pct { font-size: 1.2rem; }
+  /* Media pantalla no alcanza para una cifra de millones: Ingresos y Gastos se apilan. */
+  .tarjeta-saldo--fila .tarjeta-saldo__items { grid-template-columns: minmax(0, 1fr); }
+  .tarjeta-saldo--fila .tarjeta-saldo__item { min-height: 56px; }
+  .meta--vacia .solo-movil.texto-sm { display: none; }
   .selector-mes__largo { display: none; }
   .selector-mes__corto { display: inline; }
 }

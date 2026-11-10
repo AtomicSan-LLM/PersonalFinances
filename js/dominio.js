@@ -579,9 +579,23 @@ FP.dominio = (function () {
     });
   }
 
-  /** Serie cronológica ascendente de los últimos `n` meses (para gráficos). */
-  function serieMensual(n, rango) {
+  /**
+   * Último mes de una ventana de `n` meses que debe incluir a `periodo` (gráfica del
+   * Inicio). Si `periodo` cae dentro de los últimos `n` meses, la ventana termina hoy
+   * y así se ve también lo que vino después; si es más antiguo (o futuro), termina en él.
+   */
+  function finDeVentana(periodo, n) {
     const actual = U.periodoActual();
+    const atras = U.diffMeses(periodo, actual);
+    return (atras >= 0 && atras < (n || 12)) ? actual : periodo;
+  }
+
+  /**
+   * Serie cronológica ascendente de los últimos `n` meses (para gráficos). Termina
+   * en `fin` (por defecto, el mes actual) y no empieza antes del primer mes con datos.
+   */
+  function serieMensual(n, rango, fin) {
+    const actual = fin || U.periodoActual();
     const conDatos = periodosConDatos();
     const masAntiguo = conDatos.length ? conDatos[conDatos.length - 1] : actual;
     const disponibles = U.diffMeses(masAntiguo, actual) + 1;
@@ -794,7 +808,7 @@ FP.dominio = (function () {
     alertasTodas: alertasTodas, contarAlertasTodas: contarAlertasTodas,
     generarRecurrentes: generarRecurrentes, vigenteEn: vigenteEn, compromisoRecurrente: compromisoRecurrente,
     pendientesDeRevision: pendientesDeRevision, proximosRecurrentes: proximosRecurrentes,
-    periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual, totalesSerie: totalesSerie,
+    periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual, finDeVentana: finDeVentana, totalesSerie: totalesSerie,
     comparar: comparar,
     validarMovimiento: validarMovimiento, validarCategoria: validarCategoria,
     validarRecurrente: validarRecurrente, hayErrores: hayErrores

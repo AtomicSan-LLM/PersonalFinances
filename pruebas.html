@@ -1124,6 +1124,37 @@
     igual(t.gastoPromedio, 75, 'el mes vacío no baja el promedio de gastos');
   });
 
+  prueba('finDeVentana: termina hoy si el mes consultado está en la ventana; si no, en ese mes', function () {
+    igual(D.finDeVentana(ACTUAL, 6), ACTUAL, 'mes actual');
+    igual(D.finDeVentana(U.sumarMeses(ACTUAL, -2), 6), ACTUAL, 'hace 2 meses: la ventana sigue terminando hoy');
+    igual(D.finDeVentana(U.sumarMeses(ACTUAL, -5), 6), ACTUAL, 'hace 5 meses: último mes que aún cabe');
+    const haceSeis = U.sumarMeses(ACTUAL, -6);
+    igual(D.finDeVentana(haceSeis, 6), haceSeis, 'hace 6 meses: ya no cabe, termina en él');
+    const futuro = U.sumarMeses(ACTUAL, 1);
+    igual(D.finDeVentana(futuro, 6), futuro, 'mes futuro: termina en él');
+  });
+
+  prueba('serieMensual con `fin`: la ventana termina en ese mes y contiene sus cifras', function () {
+    limpiar();
+    const haceOcho = U.sumarMeses(ACTUAL, -8);
+    const haceSiete = U.sumarMeses(ACTUAL, -7);
+    S.crearMovimiento({ fecha: haceOcho + '-05', monto: 200, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: haceSiete + '-05', monto: 70, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 999, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const serie = D.serieMensual(6, null, haceSiete);
+    igual(serie.length, 2, 'no empieza antes del primer mes con datos');
+    igual(serie[0].periodo, haceOcho, 'primer mes');
+    igual(serie[0].ingresos, 200);
+    igual(serie[1].periodo, haceSiete, 'termina en el mes pedido');
+    igual(serie[1].gastos, 70);
+
+    const hoy = D.serieMensual(6);
+    igual(hoy.length, 6, 'sin `fin` sigue terminando en el mes actual');
+    igual(hoy[5].periodo, ACTUAL);
+    igual(hoy[5].gastos, 999);
+  });
+
   prueba('totalesSerie: sin movimientos los promedios son 0, no NaN', function () {
     limpiar();
     const t = D.totalesSerie(D.serieMensual(6));

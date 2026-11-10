@@ -305,7 +305,25 @@ FP.ui = (function () {
     function fuera(ev) { if (!envoltura.contains(ev.target)) cerrar(); }
     function teclado(ev) { if (ev.key === 'Escape') { cerrar(); boton.focus(); } }
 
+    /* En el teléfono el menú es una hoja inferior: botones grandes al alcance del pulgar
+       y sin riesgo de que un contenedor con desplazamiento lo recorte. */
+    function abrirHoja() {
+      let hoja = null;
+      const lista = el('div', { class: 'lista-acciones' }, items.filter(Boolean).map(function (item) {
+        return el('button', {
+          type: 'button',
+          class: 'lista-acciones__item' + (item.peligro ? ' peligro' : ''),
+          onclick: function () { hoja.cerrar(); item.alHacerClic(); }
+        }, [
+          item.icono ? el('span', { class: 'lista-acciones__icono', 'aria-hidden': 'true' }, item.icono) : null,
+          item.etiqueta
+        ]);
+      }));
+      hoja = dialogo({ titulo: etiqueta || 'Acciones', clase: 'dialogo--acciones', contenido: lista });
+    }
+
     function abrir() {
+      if (window.matchMedia('(max-width: 720px)').matches) { abrirHoja(); return; }
       menu = el('div', { class: 'menu', role: 'menu' });
       items.filter(Boolean).forEach(function (item) {
         menu.appendChild(el('button', {
@@ -489,7 +507,7 @@ FP.ui = (function () {
   function tarjetaSaldo(opciones) {
     const op = opciones || {};
     return el('section', {
-      class: 'tarjeta-saldo' + (op.compacta ? ' tarjeta-saldo--compacta' : ''),
+      class: 'tarjeta-saldo' + (op.compacta ? ' tarjeta-saldo--compacta' : '') + (op.clase ? ' ' + op.clase : ''),
       'aria-label': op.ariaLabel || op.etiqueta
     }, [
       el('div', { class: 'tarjeta-saldo__principal' }, [
@@ -558,11 +576,21 @@ FP.ui = (function () {
     } else {
       contenido = el('div', { class: 'meta meta--vacia' }, [
         el('span', { class: 'meta__icono', 'aria-hidden': 'true' }, '🎯'),
-        el('h2', { class: 'seccion__titulo' }, 'Sin meta de ahorro'),
-        el('p', { class: 'texto-sm texto-apagado' },
-          'Define cuánto quieres que te quede este mes para medir tu avance. ' +
-          'Tu ahorro real actual es ' + FP.dinero.formatoSaldo(r.ahorroMes) + '.'),
-        el('button', { type: 'button', class: 'btn btn--primario', onclick: editar }, 'Definir meta')
+        el('div', { class: 'meta__vacia-texto' }, [
+          el('h2', { class: 'seccion__titulo' }, 'Sin meta de ahorro'),
+          el('p', { class: 'texto-sm texto-apagado solo-escritorio' },
+            'Define cuánto quieres que te quede este mes para medir tu avance. ' +
+            'Tu ahorro real actual es ' + FP.dinero.formatoSaldo(r.ahorroMes) + '.'),
+          /* En el teléfono es una fila baja: el ahorro real ya está en la tarjeta de arriba. */
+          el('p', { class: 'texto-sm texto-apagado solo-movil' }, 'Define cuánto quieres ahorrar este mes.')
+        ]),
+        el('button', {
+          type: 'button', class: 'btn btn--primario', onclick: editar,
+          'aria-label': 'Definir meta de ahorro'
+        }, [
+          el('span', { class: 'solo-escritorio' }, 'Definir meta'),
+          el('span', { class: 'solo-movil' }, 'Definir')
+        ])
       ]);
     }
 

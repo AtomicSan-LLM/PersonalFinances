@@ -80,15 +80,22 @@ FP.graficos = (function () {
   /* ------------------------------------------------ columnas agrupadas -- */
 
   /**
-   * opciones = { etiquetas:[], series:[{nombre, color, valores:[]}], alto }
+   * opciones = { etiquetas:[], series:[{nombre, color, valores:[]}], alto, ancho,
+   *             resaltar, alElegir, titulos:[] }
+   * `ancho` es el ancho del lienzo en unidades del SVG: con 360 en un teléfono el
+   * texto de los ejes se dibuja casi a tamaño real (con 720 se vería a la mitad).
+   * `resaltar` (índice) atenúa las demás columnas; `alElegir(i)` hace tocable cada
+   * mes y `titulos` da el nombre completo de cada uno para el lector de pantalla.
    */
   function columnas(opciones) {
     const etiquetas = opciones.etiquetas || [];
     const series = opciones.series || [];
     if (!etiquetas.length || !series.length) return sinDatos();
 
-    const W = 720, H = opciones.alto || 260;
-    const m = { top: 12, right: 8, bottom: 30, left: 52 };
+    const W = opciones.ancho || 720, H = opciones.alto || 260;
+    const estrecho = W < 500;
+    const resaltar = typeof opciones.resaltar === 'number' ? opciones.resaltar : -1;
+    const m = { top: 12, right: estrecho ? 4 : 8, bottom: 30, left: estrecho ? 40 : 52 };
     const ancho = W - m.left - m.right;
     const alto = H - m.top - m.bottom;
 
@@ -113,9 +120,20 @@ FP.graficos = (function () {
     const banda = ancho / etiquetas.length;
     const anchoGrupo = Math.min(banda * 0.68, 64);
     const anchoBarra = anchoGrupo / series.length;
+    const zonas = [];
 
     etiquetas.forEach(function (etq, i) {
       const centro = m.left + banda * i + banda / 2;
+      const activo = i === resaltar;
+      const nombreMes = (opciones.titulos && opciones.titulos[i]) || etq;
+
+      /* Fondo suave detrás del mes resaltado. */
+      if (activo) {
+        nodo.appendChild(svg('rect', {
+          x: m.left + banda * i + 2, y: m.top - 4, width: banda - 4, height: alto + 4 + m.bottom - 2,
+          rx: 10, class: 'grafico__resalte'
+        }));
+      }
 
       series.forEach(function (s, j) {
         const valor = Number(s.valores[i]) || 0;
@@ -125,25 +143,47 @@ FP.graficos = (function () {
         const barra = svg('rect', {
           x: x + 1, y: m.top + alto - altura,
           width: anchoReal, height: altura,
-          rx: Math.min(6, anchoReal / 2, altura / 2), style: 'fill:' + s.color
+          rx: Math.min(6, anchoReal / 2, altura / 2), style: 'fill:' + s.color,
+          opacity: (resaltar >= 0 && !activo) ? 0.45 : null
         });
         const titulo = svg('title');
-        titulo.textContent = etq + ' · ' + s.nombre + ': ' + FP.dinero.formato(valor);
+        titulo.textContent = nombreMes + ' · ' + s.nombre + ': ' + FP.dinero.formato(valor);
         barra.appendChild(titulo);
         nodo.appendChild(barra);
       });
 
-      const t = svg('text', { x: centro, y: H - 10, 'text-anchor': 'middle', class: 'eje-texto' });
+      const t = svg('text', {
+        x: centro, y: H - 10, 'text-anchor': 'middle',
+        class: 'eje-texto' + (activo ? ' eje-texto--activo' : '')
+      });
       t.textContent = etq;
       nodo.appendChild(t);
+
+      /* Zona tocable de toda la banda del mes (encima de barras y etiqueta). */
+      if (opciones.alElegir) {
+        const zona = svg('rect', {
+          x: m.left + banda * i, y: 0, width: banda, height: H,
+          class: 'grafico__zona', role: 'button', tabindex: 0,
+          'aria-label': 'Ver ' + nombreMes, 'aria-pressed': activo ? 'true' : 'false'
+        });
+        zona.addEventListener('click', function () { opciones.alElegir(i); });
+        zona.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); opciones.alElegir(i); }
+        });
+        zonas.push(zona);
+      }
     });
 
     nodo.appendChild(svg('line', {
       x1: m.left, y1: m.top + alto, x2: W - m.right, y2: m.top + alto, class: 'eje-linea'
     }));
+    zonas.forEach(function (z) { nodo.appendChild(z); });
 
-    return envoltura(nodo, series.map(function (s) { return { nombre: s.nombre, color: s.color }; }),
+    const resultado = envoltura(nodo, series.map(function (s) { return { nombre: s.nombre, color: s.color }; }),
       opciones.descripcion || 'Gráfico de columnas');
+    /* Con zonas tocables el SVG es un grupo de botones, no una imagen estática. */
+    if (zonas.length) nodo.setAttribute('role', 'group');
+    return resultado;
   }
 
   /* --------------------------------------------------------- líneas ---- */
