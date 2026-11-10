@@ -297,6 +297,8 @@ a { color: var(--primario); }
 .selector-mes__valor { min-width: 12.5rem; }
 .selector-mes__valor:hover, .selector-dias__valor:hover { background: var(--primario-suave); color: var(--primario); }
 .selector-flecha { font-size: .7rem; color: var(--texto-3); }
+/* Nombre abreviado del mes: solo en teléfonos muy angostos (ver sección 12). */
+.selector-mes__corto { display: none; }
 
 .selector-medio { padding: 3px var(--e-3); gap: var(--e-2); }
 .selector-medio--activo { border-color: var(--primario); background: var(--primario-suave); }
@@ -354,7 +356,35 @@ a { color: var(--primario); }
 
 .nav-inferior { display: none; }
 
-.fab { display: none; }
+/* Íconos de línea (barra de pestañas, hoja «Más», cabecera móvil). */
+.icono-linea {
+  display: block; width: 24px; height: 24px; flex: 0 0 auto;
+  fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* Acciones de la cabecera que solo existen en móvil (ver sección 12). */
+.cabecera__movil { display: none; }
+
+/* Hoja «Más»: el resto de pantallas, a un toque de la barra de pestañas. */
+.lista-mas { display: flex; flex-direction: column; gap: 2px; }
+.lista-mas__item {
+  display: flex; align-items: center; gap: var(--e-3);
+  min-height: 56px; padding: var(--e-2);
+  border-radius: var(--radio);
+  color: var(--texto); text-decoration: none; font-weight: 600;
+}
+.lista-mas__item:hover, .lista-mas__item[aria-current="page"] { background: var(--primario-suave); color: var(--primario); }
+.lista-mas__icono {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: var(--radio);
+  background: var(--primario-suave); color: var(--primario);
+}
+.lista-mas__item:hover .lista-mas__icono,
+.lista-mas__item[aria-current="page"] .lista-mas__icono { background: var(--superficie); }
+.lista-mas__texto { flex: 1; min-width: 0; }
+.lista-mas__flecha { color: var(--texto-3); }
+.lista-mas__flecha .icono-linea { width: 18px; height: 18px; }
 
 /* --------------------------------------------------------------------------
    4. Botones y controles
@@ -961,27 +991,68 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
 
   .sidebar { display: none; }
 
-  /* Cabecera corta: título, mes y un botón «Filtros». Ya no es fija: así no
-     ocupa un cuarto de la pantalla mientras lees. */
+  /* Cabecera en dos filas bajas. Fila 1: título, «Mes actual» (solo si consultas otro
+     mes) y campana de avisos. Fila 2: selector de mes y botón de filtros. No es fija:
+     así no ocupa pantalla mientras lees. El subtítulo repite lo que ya dice el contenido. */
   .cabecera {
     position: relative;
-    padding: var(--e-3) var(--e-4) var(--e-2);
-    align-items: stretch; flex-direction: column; flex-wrap: nowrap; gap: var(--e-2);
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center; gap: var(--e-1) var(--e-2);
+    padding: var(--e-2) var(--e-4) var(--e-3);
   }
-  .cabecera__titulo { font-size: 1.25rem; }
-  .cabecera__sub { margin-top: 0; }
-  .cabecera__izq, .cabecera__der { min-width: 0; }
-  .cabecera__der { justify-content: space-between; gap: var(--e-2); }
-  /* El selector de mes ocupa toda su fila; «Filtros» va arriba a la derecha, junto al título. */
-  .selector-mes { flex: 1 1 100%; min-width: 0; }
+  .cabecera__izq { min-width: 0; min-height: 44px; display: flex; align-items: center; }
+  .cabecera__titulo {
+    font-size: 1.4rem; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cabecera__sub { display: none; }
+
+  .cabecera__movil { display: flex; align-items: center; gap: var(--e-1); margin-right: -6px; }
+  .chip-hoy {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 36px; padding: 0 var(--e-3) 0 10px;
+    border: 1px solid var(--advertencia); border-radius: 999px;
+    background: var(--advertencia-suave); color: var(--advertencia);
+    font: inherit; font-size: .8rem; font-weight: 650; white-space: nowrap; cursor: pointer;
+  }
+  .chip-hoy .icono-linea { width: 16px; height: 16px; stroke-width: 2.2; }
+  /* Se ve de 36 px pero la zona táctil llega a 44 px. */
+  .chip-hoy { position: relative; }
+  .chip-hoy::after { content: ""; position: absolute; inset: -4px 0; }
+  .campana {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 50%; color: var(--texto-2);
+  }
+  .campana[aria-current="page"] { background: var(--primario-suave); color: var(--primario); }
+  .campana__globo {
+    position: absolute; top: 4px; right: 2px;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+    background: var(--error); color: #fff; font-size: .68rem; font-weight: 700;
+    border: 2px solid var(--bg);
+  }
+  :root[data-tema="oscuro"] .campana__globo { color: #2e1a19; }
+
+  .cabecera__der { grid-column: 1 / -1; min-width: 0; gap: var(--e-2); }
+  .selector-mes { order: 1; flex: 1 1 0; min-width: 0; }
   .selector-mes__valor { flex: 1; min-width: 0; min-height: 44px; }
+  /* Consultando un mes que no es el actual: el selector lo señala con el color de aviso. */
+  .selector-mes--otro { border-color: var(--advertencia); }
+  .selector-mes--otro .selector-mes__valor { color: var(--advertencia); }
   /* Los distintivos largos (p. ej. «Ahorraste $ … más en Septiembre 2026») se parten en vez de salirse. */
   .distintivo { white-space: normal; max-width: 100%; text-align: left; }
+  /* «Filtros» es un botón redondo solo con ícono (su nombre va en aria-label). */
   .cabecera__der .btn-filtros {
-    display: inline-flex; align-items: center; gap: var(--e-1);
-    position: absolute; top: var(--e-2); right: var(--e-4);
+    order: 2; position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 52px; height: 52px; min-height: 0; padding: 0; border-radius: 50%;
+    background: var(--superficie); border: 1px solid var(--borde); color: var(--texto-2);
   }
-  .cabecera--filtros .cabecera__izq { padding-right: 112px; }
+  .cabecera__der .btn-filtros[aria-expanded="true"] {
+    background: var(--primario-suave); border-color: var(--primario); color: var(--primario);
+  }
+  .btn-filtros__texto { display: none; }
+  .btn-filtros__n { position: absolute; top: -4px; right: -4px; margin: 0; }
   .cabecera__filtros { display: none; }
   .cabecera__filtros.abierto {
     display: flex; flex-direction: column; gap: var(--e-2);
@@ -993,19 +1064,11 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
   .selector-medio__input { flex: 1; min-width: 0; }
   .btn--registrar { display: none; }
 
-  /* Espacio final para que el botón flotante y la barra inferior no tapen lo último. */
-  .contenido { padding: 0 var(--e-4) calc(132px + env(safe-area-inset-bottom, 0px)); }
+  /* Espacio final para que la barra de pestañas (y su «＋» elevado) no tape lo último. */
+  .contenido { padding: 0 var(--e-4) calc(104px + env(safe-area-inset-bottom, 0px)); }
 
-  /* Aviso «estás consultando otro mes»: una franja baja, no un bloque grande. */
-  .aviso-mes {
-    margin: 0 var(--e-4) var(--e-3); padding: 0 var(--e-3);
-    font-size: .84rem; flex-wrap: nowrap; justify-content: space-between; gap: var(--e-2);
-  }
-  .aviso-mes .enlace { white-space: nowrap; }
-
-  /* El botón flotante se esconde al bajar y reaparece al subir. */
-  .fab { transition: transform .2s ease, opacity .2s ease; }
-  .fab--oculto { transform: translateY(140px); opacity: 0; pointer-events: none; }
+  /* La franja «estás consultando otro mes» se sustituye por el botón «Mes actual». */
+  .aviso-mes { display: none; }
 
   /* Tablas apiladas: cada fila es una tarjeta y cada celda lleva su etiqueta. */
   .tabla--apilable, .tabla--apilable tbody, .tabla--apilable tr,
@@ -1031,7 +1094,8 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
   .tabla--apilable td:not([data-etiqueta])::before { content: none; }
 
   .tarjeta { padding: var(--e-4); border-radius: var(--radio); }
-  .rejilla--2, .rejilla--3, .rejilla--panel { grid-template-columns: 1fr; }
+  /* minmax(0, …): una cifra larga no puede ensanchar la columna más allá de la pantalla. */
+  .rejilla--2, .rejilla--3, .rejilla--panel { grid-template-columns: minmax(0, 1fr); }
 
   .tarjeta-saldo { padding: var(--e-4); }
   .tarjeta-saldo__item { min-height: 52px; padding: var(--e-2) var(--e-3); }
@@ -1056,38 +1120,58 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
   .fila-campos { grid-template-columns: 1fr; }
   .filtros .campo { min-width: 0; width: 100%; }
 
-  /* Navegación inferior */
+  /* Barra de pestañas: Inicio · Movimientos · ＋ · Presupuesto · Más. Respeta la zona
+     segura inferior del teléfono (barra de gestos). */
   .nav-inferior {
     display: block; position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
     background: var(--superficie); border-top: 1px solid var(--borde);
-    padding: 6px var(--e-2) calc(6px + env(safe-area-inset-bottom, 0px));
+    padding: 0 var(--e-2) env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -8px 24px rgba(23, 26, 60, .06);
   }
-  .nav-inferior ul { display: flex; }
-  .nav-inferior li { flex: 1; }
+  .nav-inferior ul {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 72px repeat(2, minmax(0, 1fr));
+    max-width: 520px; margin: 0 auto;
+  }
   .nav-inferior .nav-enlace {
-    flex-direction: column; gap: 2px; padding: 6px 2px;
-    font-size: .68rem; text-align: center; box-shadow: none; min-height: 48px;
-    border-radius: var(--radio-sm);
+    position: relative; width: 100%; min-height: 62px;
+    flex-direction: column; justify-content: center; gap: 2px; padding: 7px 0 6px;
+    border: 0; border-radius: var(--radio); background: transparent; box-shadow: none;
+    color: var(--texto-3); font: inherit; font-size: .72rem; font-weight: 600;
+    text-align: center; cursor: pointer;
   }
-  .nav-inferior .nav-enlace span { display: block !important; }
-  .nav-inferior .nav-enlace__icono { font-size: 1.2rem; width: auto; }
-  .nav-inferior .nav-enlace[aria-current="page"] { background: var(--primario-suave); color: var(--primario); box-shadow: none; }
-  .nav-inferior .nav-enlace__globo {
-    position: absolute; transform: translate(16px, -4px);
-    font-size: .65rem; min-width: 16px; height: 16px; padding: 0 4px;
-  }
-
-  /* Botón flotante de registro */
-  .fab {
+  .nav-inferior .nav-enlace:hover { background: transparent; }
+  .nav-inferior .nav-enlace__texto { display: block !important; }
+  .nav-inferior .nav-enlace__icono {
     display: flex; align-items: center; justify-content: center;
-    position: fixed; right: var(--e-4); bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    z-index: 70; width: 56px; height: 56px; border-radius: 50%;
-    background: var(--primario); color: var(--sobre-primario);
-    border: 0; font-size: 1.8rem; line-height: 1;
-    box-shadow: var(--sombra-alta); cursor: pointer;
+    width: 56px; height: 30px; border-radius: 999px;
+    transition: background-color .15s ease;
+  }
+  /* Pestaña activa: color de marca y píldora suave tras el ícono (no solo color: también peso). */
+  .nav-inferior .nav-enlace[aria-current] {
+    background: transparent; box-shadow: none; color: var(--primario); font-weight: 750;
+  }
+  .nav-inferior .nav-enlace[aria-current] .nav-enlace__icono { background: var(--primario-suave); }
+  .nav-inferior .nav-enlace[aria-current] .icono-linea { stroke-width: 2.1; }
+  .nav-inferior .nav-enlace__globo {
+    position: absolute; top: 4px; left: 50%; margin: 0 0 0 6px; transform: none;
+    font-size: .65rem; min-width: 18px; height: 18px; padding: 0 4px;
+    border: 2px solid var(--superficie);
   }
 
-  .toasts { bottom: calc(136px + env(safe-area-inset-bottom, 0px)); }
+  /* «＋» central: registrar movimiento. Sobresale de la barra para que sea el gesto principal. */
+  .nav-inferior__centro { display: flex; justify-content: center; align-items: flex-start; }
+  .nav-registrar {
+    display: flex; align-items: center; justify-content: center;
+    width: 60px; height: 60px; margin-top: -22px; padding: 0;
+    border: 4px solid var(--superficie); border-radius: 50%;
+    background: linear-gradient(135deg, var(--marca-a), var(--marca-b)); color: #fff;
+    box-shadow: var(--sombra-marca); cursor: pointer;
+    transition: transform .12s ease;
+  }
+  .nav-registrar:active { transform: scale(.93); }
+  .nav-registrar__icono .icono-linea { width: 26px; height: 26px; stroke-width: 2.4; }
+
+  .toasts { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
   /* Diálogos como hoja inferior: salen desde abajo, al alcance del pulgar, y se
      cierran arrastrando el asa hacia abajo o tocando fuera. */
@@ -1110,6 +1194,18 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
     padding: var(--e-3) var(--e-4) calc(var(--e-4) + env(safe-area-inset-bottom, 0px));
   }
   .dialogo__pie .btn { flex: 1; }
+}
+
+/* Teléfonos muy angostos (iPhone SE, 320 px): «Mes actual» queda solo con su ícono
+   (el nombre va en aria-label) para que el título de la pantalla no se recorte. */
+@media (max-width: 359px) {
+  .chip-hoy { width: 36px; padding: 0; justify-content: center; }
+  .chip-hoy__texto { display: none; }
+  .chip-hoy::after { inset: -4px; }
+  /* «Septiembre de 2026» no cabe entre las dos flechas: se usa «Sep 2026». */
+  .mosaico__pct { font-size: 1.2rem; }
+  .selector-mes__largo { display: none; }
+  .selector-mes__corto { display: inline; }
 }
 
 /* Pantallas táctiles (teléfonos, tablets, también en horizontal): objetivos de al menos
@@ -1144,7 +1240,7 @@ table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-
 }
 
 @media print {
-  .sidebar, .nav-inferior, .fab, .cabecera__der, .toasts { display: none !important; }
+  .sidebar, .nav-inferior, .cabecera__movil, .cabecera__der, .toasts { display: none !important; }
   body { background: #fff; }
   .tarjeta { box-shadow: none; break-inside: avoid; }
 }
