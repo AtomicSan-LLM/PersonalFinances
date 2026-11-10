@@ -110,6 +110,30 @@ FP.dominio = (function () {
     return ordenarRecientes(lista);
   }
 
+  /**
+   * Agrupa una lista de movimientos por día, conservando su orden. Cada grupo
+   * trae los totales del día: `ingresos` y `gastos` (las transferencias se
+   * listan, pero no suman al gasto, igual que en el resumen del mes).
+   */
+  function agruparPorDia(lista) {
+    const grupos = [];
+    let grupo = null;
+    (lista || []).forEach(function (m) {
+      if (!grupo || grupo.fecha !== m.fecha) {
+        grupo = { fecha: m.fecha, movimientos: [], ingresos: 0, gastos: 0 };
+        grupos.push(grupo);
+      }
+      grupo.movimientos.push(m);
+    });
+    grupos.forEach(function (g) {
+      g.ingresos = U.suma(g.movimientos.filter(function (m) { return m.tipo === 'ingreso'; }),
+        function (m) { return m.monto; });
+      g.gastos = U.suma(g.movimientos.filter(function (m) { return m.tipo === 'gasto' && !esTransferencia(m); }),
+        function (m) { return m.monto; });
+    });
+    return grupos;
+  }
+
   /* ================================================== resumen del mes == */
 
   /**
@@ -808,6 +832,7 @@ FP.dominio = (function () {
     alertasTodas: alertasTodas, contarAlertasTodas: contarAlertasTodas,
     generarRecurrentes: generarRecurrentes, vigenteEn: vigenteEn, compromisoRecurrente: compromisoRecurrente,
     pendientesDeRevision: pendientesDeRevision, proximosRecurrentes: proximosRecurrentes,
+    agruparPorDia: agruparPorDia,
     periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual, finDeVentana: finDeVentana, totalesSerie: totalesSerie,
     comparar: comparar,
     validarMovimiento: validarMovimiento, validarCategoria: validarCategoria,

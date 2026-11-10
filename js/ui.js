@@ -355,6 +355,9 @@ FP.ui = (function () {
   /** Fila de movimiento (lista compacta del dashboard y tarjetas en móvil). */
   function filaMovimiento(mov, opciones) {
     const op = opciones || {};
+    if ((op.alEditar || op.alEliminar) && window.matchMedia('(max-width: 720px)').matches) {
+      return filaMovimientoMovil(mov, op);
+    }
     const cat = FP.store.categoria(mov.categoriaId);
     const esIngreso = mov.tipo === 'ingreso';
 
@@ -407,6 +410,101 @@ FP.ui = (function () {
           : null
       ], 'Acciones del movimiento: ' + (mov.descripcion || 'movimiento')) : null
     ]);
+  }
+
+  /** Marcas de estado de un movimiento (transferencia, recurrente, por revisar, futuro). */
+  function marcasMovimiento(mov, cortas) {
+    return [
+      FP.dominio.esTransferencia(mov) ? distintivo('No cuenta como gasto', 'neutro', '↔') : null,
+      (mov.recurrenteId || mov.recurrenteOrigen)
+        ? distintivo(cortas ? 'Recurrente' : 'Generado por recurrente', 'info', '🔁') : null,
+      mov.revisar ? distintivo('Por revisar', 'advertencia', '👁') : null,
+      mov.fecha > U.hoyISO() ? distintivo('Fecha futura', 'neutro', '📅') : null
+    ].filter(Boolean);
+  }
+
+  /**
+   * Fila de movimiento en el teléfono: toda la fila es un botón que abre la hoja
+   * de detalle (sin «⋮», para dejarle el ancho al título y al monto).
+   * opciones = { sinFecha (la lista ya va agrupada por día), mostrarAnio, alEditar, alEliminar, alRevisar }
+   */
+  function filaMovimientoMovil(mov, op) {
+    const cat = FP.store.categoria(mov.categoriaId);
+    const esIngreso = mov.tipo === 'ingreso';
+    const nombreCat = cat ? cat.nombre : 'Sin categoría';
+    const titulo = mov.descripcion || nombreCat;
+
+    const partes = [];
+    if (mov.descripcion) partes.push(nombreCat);
+    if (mov.tipo === 'gasto' && FP.medios.esValido(mov.medioPago)) partes.push(FP.medios.info(mov.medioPago).etiqueta);
+    if (!op.sinFecha) partes.push(U.fechaCorta(mov.fecha, op.mostrarAnio));
+    if (!partes.length) partes.push(esIngreso ? 'Ingreso' : 'Gasto');
+
+    const marcas = marcasMovimiento(mov, true);
+    const monto = FP.dinero.formatoConSigno(mov.monto, mov.tipo);
+
+    return el('button', {
+      type: 'button', class: 'movimiento movimiento--boton',
+      'aria-haspopup': 'dialog',
+      'aria-label': (esIngreso ? 'Ingreso' : 'Gasto') + ': ' + titulo + ', ' + monto + ', ' +
+        U.fechaCorta(mov.fecha, op.mostrarAnio) + '. Ver detalle',
+      onclick: function () { hojaMovimiento(mov, op); }
+    }, [
+      el('span', {
+        class: 'movimiento__marca movimiento__marca--' + mov.tipo, 'aria-hidden': 'true'
+      }, cat && cat.icono ? cat.icono : (esIngreso ? '↑' : '↓')),
+      el('span', { class: 'movimiento__cuerpo' }, [
+        el('span', { class: 'movimiento__titulo' }, titulo),
+        el('span', { class: 'movimiento__sub' }, partes.join(' · ')),
+        marcas.length ? el('span', { class: 'movimiento__marcas' }, marcas) : null
+      ]),
+      el('span', { class: 'movimiento__monto monto--' + mov.tipo }, monto)
+    ]);
+  }
+
+  /** Hoja inferior con el detalle de un movimiento y sus acciones. */
+  function hojaMovimiento(mov, op) {
+    const cat = FP.store.categoria(mov.categoriaId);
+    const esIngreso = mov.tipo === 'ingreso';
+    const marcas = marcasMovimiento(mov, false);
+    let hoja = null;
+
+    function dato(nombre, valor) {
+      return el('div', { class: 'detalle__fila' }, [el('dt', null, nombre), el('dd', null, valor)]);
+    }
+
+    const contenido = el('div', { class: 'detalle' }, [
+      el('p', { class: 'detalle__monto monto--' + mov.tipo }, FP.dinero.formatoConSigno(mov.monto, mov.tipo)),
+      marcas.length ? el('div', { class: 'detalle__marcas' }, marcas) : null,
+      el('dl', { class: 'detalle__lista' }, [
+        dato('Tipo', esIngreso ? 'Ingreso' : 'Gasto'),
+        dato('Categoría', (cat && cat.icono ? cat.icono + ' ' : '') + (cat ? cat.nombre : 'Sin categoría')),
+        dato('Fecha', U.fechaLarga(mov.fecha)),
+        esIngreso ? null : dato('Medio de pago', FP.medios.info(FP.medios.de(mov)).etiqueta),
+        mov.descripcion ? dato('Descripción', mov.descripcion) : null
+      ]),
+      (op.alRevisar && mov.revisar) ? el('button', {
+        type: 'button', class: 'btn btn--bloque',
+        onclick: function () { hoja.cerrar(); op.alRevisar(mov); }
+      }, '✓ Marcar como revisado') : null
+    ]);
+
+    hoja = dialogo({
+      titulo: mov.descripcion || (cat ? cat.nombre : (esIngreso ? 'Ingreso' : 'Gasto')),
+      clase: 'dialogo--detalle',
+      contenido: contenido,
+      acciones: [
+        op.alEliminar ? {
+          etiqueta: 'Eliminar', clase: 'btn--peligro-suave',
+          alHacerClic: function (cerrar) { cerrar(); op.alEliminar(mov); }
+        } : null,
+        op.alEditar ? {
+          etiqueta: 'Editar', clase: 'btn--primario',
+          alHacerClic: function (cerrar) { cerrar(); op.alEditar(mov); }
+        } : null
+      ].filter(Boolean)
+    });
+    return hoja;
   }
 
   /**

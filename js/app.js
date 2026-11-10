@@ -457,7 +457,7 @@ FP.app = (function () {
     zona.addEventListener('touchstart', function (e) {
       inicio = null;
       if (!mqMovil.matches || e.touches.length !== 1) return;
-      if (e.target.closest('.tabla-contenedor, .mosaicos--carrusel, svg, input, select, textarea, .menu, dialog')) return;
+      if (e.target.closest('.tabla-contenedor, .mosaicos--carrusel, .chips, svg, input, select, textarea, .menu, dialog')) return;
       const vista = RUTAS[rutaActual]();
       if (vista.ocultarSelectorMes) return;
       inicio = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };

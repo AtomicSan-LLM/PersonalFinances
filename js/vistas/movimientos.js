@@ -28,6 +28,8 @@ FP.vistas.movimientos = (function () {
       filtros.categoriaId = 'todas';
     }
 
+    if (FP.app.esMovil()) { renderMovil(cont, periodo, ctx); return; }
+
     const lista = el('div');
     const barra = barraFiltros(periodo, ctx, function () { pintar(lista, periodo, ctx, elegirTipo); });
 
@@ -83,14 +85,8 @@ FP.vistas.movimientos = (function () {
 
     const limpiar = el('button', {
       type: 'button', class: 'btn',
-      onclick: function () {
-        filtros.tipo = 'todos'; filtros.categoriaId = 'todas'; filtros.texto = '';
-        if (ctx.medioPago !== 'todos') ctx.cambiarMedioPago('todos'); else FP.app.refrescar();
-      }
+      onclick: function () { limpiarFiltros(ctx); }
     }, 'Limpiar filtros');
-
-    const hayFiltro = filtros.tipo !== 'todos' || filtros.categoriaId !== 'todas' || filtros.texto ||
-      ctx.medioPago !== 'todos';
 
     return el('div', { class: 'tarjeta filtros' }, [
       ui.campo({ etiqueta: 'Tipo', control: grupo }),
@@ -98,17 +94,199 @@ FP.vistas.movimientos = (function () {
       el('div', { class: 'filtros__buscar' }, [
         ui.campo({ etiqueta: 'Buscar', control: buscar })
       ]),
-      hayFiltro ? limpiar : null
+      hayFiltro(ctx) ? limpiar : null
     ]);
+  }
+
+  function hayFiltro(ctx) {
+    return filtros.tipo !== 'todos' || filtros.categoriaId !== 'todas' || !!filtros.texto ||
+      ctx.medioPago !== 'todos';
+  }
+
+  function limpiarFiltros(ctx) {
+    filtros.tipo = 'todos'; filtros.categoriaId = 'todas'; filtros.texto = '';
+    buscarAbierto = false;
+    if (ctx.medioPago !== 'todos') ctx.cambiarMedioPago('todos'); else FP.app.refrescar();
+  }
+
+  /* ------------------------------------------------------ Teléfono ---- */
+
+  /* La búsqueda se despliega con la lupa; se recuerda mientras dure la sesión. */
+  let buscarAbierto = false;
+
+  const ICONO_LUPA = '<svg class="icono-linea" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
+
+  /**
+   * Teléfono: resumen → fila de chips (tipo, categoría, lupa) → lista agrupada por
+   * día. El campo de búsqueda no se repinta para que no pierda el foco al escribir.
+   */
+  function renderMovil(cont, periodo, ctx) {
+    const zonaResumen = el('div');
+    const zonaChips = el('div');
+    const zonaLista = el('div', { class: 'dias' });
+
+    const buscar = el('input', {
+      type: 'search', value: filtros.texto, 'aria-label': 'Buscar movimientos',
+      placeholder: 'Buscar por descripción o categoría…',
+      oninput: U.debounce(function (e) { filtros.texto = e.target.value; repintar(); }, 250)
+    });
+    const cajaBuscar = el('div', { class: 'buscar-movil' }, [buscar]);
+    if (filtros.texto) buscarAbierto = true;
+    cajaBuscar.hidden = !buscarAbierto;
+
+    function elegirTipo(tipo) {
+      filtros.tipo = filtros.tipo === tipo ? 'todos' : tipo;
+      repintar();
+    }
+
+    function chip(clave, contenido, atributos, alPulsar) {
+      return el('button', Object.assign({
+        type: 'button', class: 'chip', dataset: { chip: clave }, onclick: alPulsar
+      }, atributos), contenido);
+    }
+
+    function pintarChips() {
+      const anterior = zonaChips.firstChild;
+      const desplazado = anterior ? anterior.scrollLeft : 0;
+      const conFoco = document.activeElement && zonaChips.contains(document.activeElement)
+        ? document.activeElement.dataset.chip : null;
+      const cat = filtros.categoriaId !== 'todas' ? FP.store.categoria(filtros.categoriaId) : null;
+
+      const lupa = chip('buscar', null, {
+        class: 'chip chip--icono', 'aria-label': 'Buscar', 'aria-expanded': String(buscarAbierto),
+        'aria-pressed': String(!!filtros.texto)
+      }, function () {
+        buscarAbierto = !buscarAbierto;
+        cajaBuscar.hidden = !buscarAbierto;
+        if (buscarAbierto) buscar.focus();
+        else if (filtros.texto) { filtros.texto = ''; buscar.value = ''; }
+        repintar();
+      });
+      lupa.innerHTML = ICONO_LUPA;
+
+      /* La lupa va primero para que siempre quede a la vista; el resto se desliza. */
+      const fila = el('div', { class: 'chips', role: 'group', 'aria-label': 'Filtros' },
+        [lupa].concat([['todos', 'Todos'], ['ingreso', 'Ingresos'], ['gasto', 'Gastos']].map(function (par) {
+          return chip(par[0], par[1], {
+            dataset: { chip: par[0], tipo: par[0] }, 'aria-pressed': String(filtros.tipo === par[0])
+          }, function () { filtros.tipo = par[0]; repintar(); });
+        })).concat([
+          chip('categoria', [
+            cat ? (cat.icono ? cat.icono + ' ' : '') + cat.nombre : 'Categoría',
+            el('span', { class: 'chip__flecha', 'aria-hidden': 'true' }, '▾')
+          ], {
+            'aria-pressed': String(!!cat), 'aria-haspopup': 'dialog',
+            'aria-label': cat ? 'Categoría: ' + cat.nombre + '. Cambiar' : 'Filtrar por categoría'
+          }, elegirCategoria),
+          hayFiltro(ctx) ? chip('limpiar', '✕ Limpiar', { class: 'chip chip--limpiar' },
+            function () { limpiarFiltros(ctx); }) : null
+        ]));
+
+      U.vaciar(zonaChips);
+      zonaChips.appendChild(fila);
+      fila.scrollLeft = desplazado;
+      if (conFoco) {
+        const b = fila.querySelector('[data-chip="' + conFoco + '"]') || fila.querySelector('.chip');
+        if (b) b.focus({ preventScroll: true });
+      }
+    }
+
+    /* Hoja inferior con las categorías; la elegida queda marcada. */
+    function elegirCategoria() {
+      let hoja = null;
+      function opcion(id, icono, nombre) {
+        const elegida = filtros.categoriaId === id;
+        return el('button', {
+          type: 'button', class: 'lista-acciones__item', 'aria-pressed': String(elegida),
+          onclick: function () { filtros.categoriaId = id; hoja.cerrar(); repintar(); }
+        }, [
+          el('span', { class: 'lista-acciones__icono', 'aria-hidden': 'true' }, icono || '•'),
+          el('span', { class: 'lista-acciones__texto' }, nombre),
+          elegida ? el('span', { class: 'lista-acciones__marca', 'aria-hidden': 'true' }, '✓') : null
+        ]);
+      }
+      const nodos = [opcion('todas', '🗂', 'Todas las categorías')];
+      [['gasto', 'Gastos'], ['ingreso', 'Ingresos']].forEach(function (par) {
+        const cats = FP.store.state.categorias
+          .filter(function (c) { return c.tipo === par[0]; })
+          .sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
+        if (!cats.length) return;
+        nodos.push(el('h3', { class: 'lista-acciones__grupo' }, par[1]));
+        cats.forEach(function (c) { nodos.push(opcion(c.id, c.icono, c.nombre)); });
+      });
+      hoja = ui.dialogo({
+        titulo: 'Categoría', clase: 'dialogo--acciones',
+        contenido: el('div', { class: 'lista-acciones' }, nodos)
+      });
+    }
+
+    function pintarLista(movs) {
+      U.vaciar(zonaLista);
+      if (!movs.length) {
+        zonaLista.appendChild(el('div', { class: 'tarjeta' }, [estadoVacio(periodo, ctx)]));
+        return;
+      }
+      FP.dominio.agruparPorDia(movs).forEach(function (g) {
+        /* Subtotal: lo gastado ese día; si no hubo gastos, lo que entró. */
+        const subtotal = g.gastos ? FP.dinero.formatoConSigno(g.gastos, 'gasto')
+          : (g.ingresos ? FP.dinero.formatoConSigno(g.ingresos, 'ingreso') : '');
+        const nombre = U.diaRelativo(g.fecha);
+        const tarjeta = el('div', { class: 'tarjeta dia__tarjeta' });
+        g.movimientos.forEach(function (m) { tarjeta.appendChild(fila(m, ctx, true)); });
+        zonaLista.appendChild(el('section', { class: 'dia', 'aria-label': nombre }, [
+          el('div', { class: 'dia__cabecera' }, [
+            el('h2', { class: 'dia__titulo' }, nombre),
+            subtotal ? el('span', {
+              class: 'dia__subtotal',
+              'aria-label': (g.gastos ? 'Gastado: ' : 'Ingresos: ') + subtotal
+            }, subtotal) : null
+          ]),
+          tarjeta
+        ]));
+      });
+    }
+
+    function repintar() {
+      const movs = movimientosFiltrados(periodo, ctx);
+      U.vaciar(zonaResumen);
+      pintarResumen(zonaResumen, movs, periodo, ctx, elegirTipo);
+      pintarChips();
+      pintarLista(movs);
+    }
+
+    U.agregar(cont, [zonaResumen, zonaChips, cajaBuscar, zonaLista]);
+    repintar();
   }
 
   /* --------------------------------------------------------- Lista ---- */
 
+  function movimientosFiltrados(periodo, ctx) {
+    return FP.dominio.filtrarMovimientos(periodo,
+      Object.assign({}, filtros, { medioPago: ctx.medioPago || 'todos', rango: ctx.rango }));
+  }
+
   function pintar(cont, periodo, ctx, elegirTipo) {
     U.vaciar(cont);
+    const movs = movimientosFiltrados(periodo, ctx);
+    pintarResumen(cont, movs, periodo, ctx, elegirTipo);
+
+    const tarjeta = el('div', { class: 'tarjeta mt-4' });
+
+    if (!movs.length) {
+      tarjeta.appendChild(estadoVacio(periodo, ctx));
+    } else if (FP.app.usaTarjetas()) {
+      movs.forEach(function (m) { tarjeta.appendChild(fila(m, ctx)); });
+    } else {
+      tarjeta.appendChild(tabla(movs, ctx));
+    }
+
+    cont.appendChild(tarjeta);
+  }
+
+  /** Avisos de rango/medio de pago y tarjeta resumen de lo que se está viendo. */
+  function pintarResumen(cont, movs, periodo, ctx, elegirTipo) {
     const medio = ctx.medioPago || 'todos';
-    const movs = FP.dominio.filtrarMovimientos(periodo,
-      Object.assign({}, filtros, { medioPago: medio, rango: ctx.rango }));
 
     if (ctx.rango) {
       cont.appendChild(el('div', { class: 'aviso-medio' },
@@ -150,12 +328,11 @@ FP.vistas.movimientos = (function () {
             accion: 'Mostrar solo gastos', alHacerClic: function () { elegirTipo('gasto'); } }
         ]
       }));
+  }
 
-    const tarjeta = el('div', { class: 'tarjeta mt-4' });
-
-    if (!movs.length) {
+  function estadoVacio(periodo, ctx) {
       const hayEnElMes = FP.dominio.movimientosDe(periodo).length > 0;
-      tarjeta.appendChild(ui.vacio({
+      return ui.vacio({
         icono: hayEnElMes ? '🔍' : '🧾',
         titulo: hayEnElMes
           ? 'Ningún movimiento coincide con los filtros'
@@ -166,26 +343,17 @@ FP.vistas.movimientos = (function () {
           : 'Registra tu primer ingreso o gasto para empezar a controlar tus finanzas.',
         accion: hayEnElMes ? {
           etiqueta: 'Limpiar filtros',
-          alHacerClic: function () {
-            filtros.tipo = 'todos'; filtros.categoriaId = 'todas'; filtros.texto = '';
-            if (ctx.medioPago !== 'todos') ctx.cambiarMedioPago('todos'); else FP.app.refrescar();
-          }
+          alHacerClic: function () { limpiarFiltros(ctx); }
         } : {
           etiqueta: '＋ Registrar movimiento',
           alHacerClic: function () { FP.formularios.movimiento({ periodo: periodo, alGuardar: ctx.refrescar }); }
         }
-      }));
-    } else if (FP.app.usaTarjetas()) {
-      movs.forEach(function (m) { tarjeta.appendChild(fila(m, ctx)); });
-    } else {
-      tarjeta.appendChild(tabla(movs, ctx));
-    }
-
-    cont.appendChild(tarjeta);
+      });
   }
 
-  function fila(m, ctx) {
+  function fila(m, ctx, sinFecha) {
     return ui.filaMovimiento(m, {
+      sinFecha: sinFecha,
       alEditar: function (mov) { FP.formularios.movimiento({ movimiento: mov, alGuardar: ctx.refrescar }); },
       alEliminar: function (mov) { FP.acciones.eliminarMovimiento(mov, ctx.refrescar); },
       alRevisar: function (mov) { FP.acciones.marcarRevisado(mov); }
