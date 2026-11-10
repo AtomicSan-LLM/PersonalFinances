@@ -136,7 +136,108 @@ FP.app = (function () {
 
   function construirNavegacion() {
     pintarNav(document.getElementById('nav-principal'), NAV_PRINCIPAL.concat(['separador'], NAV_SECUNDARIA));
-    pintarNav(document.getElementById('nav-inferior'), NAV_PRINCIPAL);
+    pintarBarraInferior(document.getElementById('nav-inferior'));
+  }
+
+  /* ----------------------------------------- barra de pestañas (móvil) -- */
+
+  /* Íconos de línea (24 × 24, trazo con el color del texto). Son constantes de este
+     archivo, nunca datos del usuario. */
+  const ICONOS = {
+    inicio: '<path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>',
+    movimientos: '<path d="M7.5 20V5m0 0L4 8.5M7.5 5 11 8.5M16.5 4v15m0 0L20 15.5M16.5 19 13 15.5"/>',
+    presupuesto: '<path d="M11 4a8.5 8.5 0 1 0 9 9h-9z"/><path d="M14.5 3.2a8.5 8.5 0 0 1 6.3 6.3h-6.3z"/>',
+    historico: '<path d="M4 20h16M6 15.5l4-4.5 3.5 3L19 7.5"/>',
+    alertas: '<path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/>',
+    recurrentes: '<path d="M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4"/>',
+    categorias: '<path d="M3.5 12V4.5a1 1 0 0 1 1-1H12l8.5 8.5-8.5 8.5z"/><circle cx="8" cy="8" r="1.3"/>',
+    comparar: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
+    /* Engranaje (trazo de Feather Icons, licencia MIT), reducido para igualar el peso del resto. */
+    configuracion: '<g transform="translate(1.8 1.8) scale(.85)"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></g>',
+    mas: '<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
+    registrar: '<path d="M12 5v14M5 12h14"/>',
+    flecha: '<path d="M9 5l7 7-7 7"/>'
+  };
+
+  function iconoLinea(nombre, clase) {
+    return el('span', {
+      class: clase || 'nav-enlace__icono',
+      'aria-hidden': 'true',
+      html: '<svg class="icono-linea" viewBox="0 0 24 24">' + ICONOS[nombre] + '</svg>'
+    });
+  }
+
+  /* Nombres cortos: en una pestaña de 70 px no cabe «Movimientos» a un tamaño legible. */
+  const ETIQUETA_CORTA = { movimientos: 'Movim.', presupuesto: 'Presup.' };
+
+  /* Lo que no cabe en la barra vive en la hoja «Más». */
+  const NAV_MAS = ['historico', 'alertas', 'recurrentes', 'categorias', 'comparar', 'configuracion'];
+
+  /**
+   * Barra de pestañas: Inicio · Movimientos · ＋ · Presupuesto · Más. El «＋» central
+   * registra un movimiento (antes era un botón flotante que tapaba el contenido).
+   */
+  function pintarBarraInferior(contenedor) {
+    if (!contenedor) return;
+    U.vaciar(contenedor);
+
+    function pestana(clave) {
+      const vista = RUTAS[clave]();
+      return el('li', null, el('a', {
+        class: 'nav-enlace', href: '#/' + clave, dataset: { ruta: clave },
+        'aria-label': vista.titulo
+      }, [
+        iconoLinea(clave),
+        el('span', { class: 'nav-enlace__texto', 'aria-hidden': 'true' }, ETIQUETA_CORTA[clave] || vista.titulo)
+      ]));
+    }
+
+    contenedor.appendChild(pestana('inicio'));
+    contenedor.appendChild(pestana('movimientos'));
+
+    contenedor.appendChild(el('li', { class: 'nav-inferior__centro' }, el('button', {
+      type: 'button', class: 'nav-registrar',
+      dataset: { accion: 'nuevo-movimiento' },
+      'aria-label': 'Registrar movimiento'
+    }, iconoLinea('registrar', 'nav-registrar__icono'))));
+
+    contenedor.appendChild(pestana('presupuesto'));
+
+    contenedor.appendChild(el('li', null, el('button', {
+      type: 'button', class: 'nav-enlace nav-enlace--mas', id: 'btn-mas',
+      'aria-haspopup': 'dialog',
+      onclick: abrirMas
+    }, [
+      iconoLinea('mas'),
+      el('span', { class: 'nav-enlace__texto' }, 'Más'),
+      el('span', { class: 'nav-enlace__globo', hidden: true })
+    ])));
+  }
+
+  /** Hoja inferior con el resto de pantallas. */
+  function abrirMas() {
+    const nAlertas = FP.dominio.contarAlertasTodas();
+    let hoja = null;
+
+    const lista = el('ul', { class: 'lista-mas' }, NAV_MAS.map(function (clave) {
+      const vista = RUTAS[clave]();
+      const actual = clave === rutaActual;
+      return el('li', null, el('a', {
+        class: 'lista-mas__item', href: '#/' + clave,
+        'aria-current': actual ? 'page' : null,
+        onclick: function () { hoja.cerrar(); }
+      }, [
+        iconoLinea(clave, 'lista-mas__icono'),
+        el('span', { class: 'lista-mas__texto' }, vista.titulo),
+        clave === 'alertas' && nAlertas
+          ? el('span', { class: 'nav-enlace__globo', 'aria-label': nAlertas + ' aviso(s) pendiente(s)' },
+              nAlertas > 9 ? '9+' : String(nAlertas))
+          : null,
+        iconoLinea('flecha', 'lista-mas__flecha')
+      ]));
+    }));
+
+    hoja = FP.ui.dialogo({ titulo: 'Más', clase: 'dialogo--mas', contenido: lista });
   }
 
   function pintarNav(contenedor, rutas) {
@@ -173,8 +274,11 @@ FP.app = (function () {
     const nAlertas = FP.dominio.contarAlertasTodas();
 
     U.$$('.nav-enlace').forEach(function (a) {
-      const activo = a.dataset.ruta === rutaActual;
-      if (activo) a.setAttribute('aria-current', 'page');
+      /* «Más» se marca cuando la pantalla abierta es una de las de su hoja. */
+      const activo = a.id === 'btn-mas'
+        ? NAV_MAS.indexOf(rutaActual) >= 0
+        : a.dataset.ruta === rutaActual;
+      if (activo) a.setAttribute('aria-current', a.id === 'btn-mas' ? 'true' : 'page');
       else a.removeAttribute('aria-current');
 
       const globo = a.querySelector('.nav-enlace__globo');
@@ -184,6 +288,17 @@ FP.app = (function () {
         globo.setAttribute('aria-label', nAlertas + ' aviso(s) pendiente(s)');
       }
     });
+
+    /* Campana de la cabecera (móvil) */
+    const campana = document.getElementById('campana');
+    if (campana) {
+      const globo = document.getElementById('campana-globo');
+      globo.hidden = nAlertas === 0;
+      globo.textContent = nAlertas > 9 ? '9+' : String(nAlertas);
+      campana.setAttribute('aria-label', 'Avisos' + (nAlertas ? ': ' + nAlertas + ' pendiente(s)' : ''));
+      if (rutaActual === 'alertas') campana.setAttribute('aria-current', 'page');
+      else campana.removeAttribute('aria-current');
+    }
   }
 
   /* ----------------------------------------------------------- hash --- */
@@ -328,19 +443,6 @@ FP.app = (function () {
     abrirFiltros(usa && filtrosAbiertos);
   }
 
-  /* ------------------------------------------- botón flotante (FAB) ----- */
-
-  let ultimoScroll = 0;
-
-  function actualizarFab() {
-    const fab = document.querySelector('.fab');
-    if (!fab) return;
-    const y = window.scrollY;
-    if (y > ultimoScroll + 6 && y > 120) fab.classList.add('fab--oculto');
-    else if (y < ultimoScroll - 6 || y <= 120) fab.classList.remove('fab--oculto');
-    ultimoScroll = y;
-  }
-
   /* ---------------------------------- deslizar para cambiar de mes ------ */
 
   /**
@@ -355,7 +457,7 @@ FP.app = (function () {
     zona.addEventListener('touchstart', function (e) {
       inicio = null;
       if (!mqMovil.matches || e.touches.length !== 1) return;
-      if (e.target.closest('.tabla-contenedor, svg, input, select, textarea, .menu, dialog')) return;
+      if (e.target.closest('.tabla-contenedor, .mosaicos--carrusel, .chips, svg, input, select, textarea, .menu, dialog')) return;
       const vista = RUTAS[rutaActual]();
       if (vista.ocultarSelectorMes) return;
       inicio = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
@@ -409,7 +511,11 @@ FP.app = (function () {
       /* Selector de mes */
       const selector = document.getElementById('selector-mes');
       selector.hidden = !!vista.ocultarSelectorMes;
-      document.getElementById('mes-etiqueta').textContent = FP.calendario.capitalizar(FP.calendario.etiquetaMes(periodo));
+      const mesLargo = FP.calendario.capitalizar(FP.calendario.etiquetaMes(periodo));
+      document.getElementById('mes-etiqueta').textContent = mesLargo;
+      /* «Sep 2026» para teléfonos muy angostos; el lector de pantalla recibe el nombre completo. */
+      document.getElementById('mes-etiqueta-corta').textContent = mesLargo.slice(0, 3) + ' ' + periodo.slice(0, 4);
+      document.getElementById('btn-mes').setAttribute('aria-label', mesLargo + '. Cambiar de mes');
 
       /* Rango de días: solo donde la vista lo usa */
       sincronizarSelectorDias(vista, rangoVista);
@@ -434,6 +540,12 @@ FP.app = (function () {
         document.getElementById('aviso-mes-texto').textContent =
           'Estás consultando ' + U.periodoLegible(periodo) + ', no el mes actual.';
       }
+      /* En móvil la franja se sustituye por el botón «Mes actual» y el selector resaltado. */
+      const hoy = document.getElementById('btn-hoy');
+      hoy.hidden = aviso.hidden;
+      hoy.setAttribute('aria-label',
+        'Estás consultando ' + U.periodoLegible(periodo) + '. Ir al mes actual');
+      selector.classList.toggle('selector-mes--otro', !aviso.hidden);
 
       actualizarNav();
 
@@ -470,11 +582,10 @@ FP.app = (function () {
     const inputMedio = document.getElementById('input-medio');
     if (inputMedio) inputMedio.addEventListener('change', function (e) { cambiarMedioPago(e.target.value); });
 
-    /* Filtros plegables (móvil), botón flotante y deslizar para cambiar de mes */
+    /* Filtros plegables (móvil) y deslizar para cambiar de mes */
     document.getElementById('btn-filtros').addEventListener('click', function () {
       abrirFiltros(!filtrosAbiertos);
     });
-    window.addEventListener('scroll', actualizarFab, { passive: true });
     conectarDeslizarMes();
 
     /* Rango de días del mes */

@@ -38,8 +38,10 @@ FP.vistas.presupuesto = (function () {
       ]));
     }
 
-    cont.appendChild(tarjetaMeta(r, periodo, ctx));
-    cont.appendChild(tarjetaPlanAhorro(periodo, ctx));
+    cont.appendChild(el('div', { class: 'rejilla rejilla--panel rejilla--estirar' }, [
+      tarjetaPlan(coherencia, periodo),
+      ui.tarjetaMeta(r, periodo, ctx.refrescar)
+    ]));
 
     /* --------------------------------------------------- Topes ------- */
     const seccion = el('section', { class: 'seccion mt-5' }, [
@@ -91,6 +93,8 @@ FP.vistas.presupuesto = (function () {
     seccion.appendChild(tarjeta);
     cont.appendChild(seccion);
 
+    cont.appendChild(tarjetaPlanAhorro(periodo, ctx));
+
     /* Análisis por medio de pago: informativo; los topes cuentan todos los gastos. */
     const medios = ui.tarjetaMediosPago(periodo, {
       nota: 'Es solo informativo: los topes de arriba cuentan todos tus gastos del mes, ' +
@@ -98,82 +102,24 @@ FP.vistas.presupuesto = (function () {
     });
     medios.classList.add('mt-4');
     cont.appendChild(medios);
-
-    /* Resumen del plan */
-    if (conTope.length) {
-      cont.appendChild(el('div', { class: 'tarjeta' }, [
-        el('h2', { class: 'seccion__titulo' }, 'Cómo queda tu plan'),
-        el('div', { class: 'tabla-contenedor mt-3' }, [
-          el('table', { class: 'tabla' }, [
-            el('tbody', null, [
-              linea('Ingresos previstos del mes', FP.dinero.formato(coherencia.ingresosPrevistos)),
-              linea('Suma de topes de gasto', '-' + FP.dinero.formato(coherencia.sumaTopes)),
-              linea('Meta de ahorro', '-' + FP.dinero.formato(coherencia.metaAhorro)),
-              linea(
-                coherencia.exceso > 0 ? 'Faltante' : 'Margen sin asignar',
-                FP.dinero.formatoSaldo(-coherencia.exceso),
-                true,
-                coherencia.exceso > 0 ? 'error' : 'exito'
-              )
-            ])
-          ])
-        ]),
-        el('p', { class: 'campo__ayuda mt-3' },
-          'Los ingresos previstos son los ya registrados en el mes más los recurrentes de ingreso vigentes que ' +
-          'todavía no se han generado.')
-      ]));
-    }
   }
 
-  function linea(etiqueta, valor, destacar, color) {
-    return el('tr', null, [
-      el('th', { scope: 'row', style: destacar ? 'font-weight:700;color:var(--texto)' : '' }, etiqueta),
-      el('td', {
-        class: 'num nowrap',
-        style: 'font-weight:' + (destacar ? '700' : '600') + (color ? ';color:var(--' + color + ')' : '')
-      }, valor)
-    ]);
-  }
+  /* ------------------------------------------------ Cómo queda el plan */
 
-  /* ------------------------------------------------- Meta de ahorro --- */
-
-  function tarjetaMeta(r, periodo, ctx) {
-    const nodos = [
-      el('div', { class: 'fila fila--entre' }, [
-        el('h2', { class: 'seccion__titulo' }, 'Meta de ahorro'),
-        el('button', {
-          type: 'button', class: 'btn btn--sm',
-          onclick: function () { FP.formularios.metaAhorro({ periodo: periodo, alGuardar: ctx.refrescar }); }
-        }, r.hayMeta ? 'Editar meta' : 'Definir meta')
-      ])
-    ];
-
-    if (!r.hayMeta) {
-      nodos.push(el('p', { class: 'texto-apagado mt-4' },
-        'No has fijado una meta para ' + U.periodoLegible(periodo) + '. ' +
-        'Tu ahorro real actual es ' + FP.dinero.formatoSaldo(r.ahorroReal) + '.'));
-    } else {
-      const severidad = r.cumpleMeta ? 'exito' : (r.ahorroReal < 0 ? 'error' : 'advertencia');
-      nodos.push(
-        el('div', { class: 'rejilla rejilla--3 mt-4' }, [
-          dato('Meta', FP.dinero.formato(r.metaAhorro)),
-          dato('Ahorro real', FP.dinero.formatoSaldo(r.ahorroReal)),
-          dato(r.cumpleMeta ? 'Por encima' : 'Faltan', FP.dinero.formato(Math.abs(r.diferenciaMeta)))
-        ]),
-        ui.barraProgreso(U.clamp(r.porcentajeMeta, 0, 100), severidad,
-          'Avance de la meta: ' + U.formatoPorcentaje(r.porcentajeMeta, 0)),
-        el('div', { class: 'fila fila--entre mt-3' }, [
-          el('span', { class: 'texto-sm texto-apagado' },
-            r.cumpleMeta
-              ? 'Ya cumpliste tu meta de este mes.'
-              : 'Necesitas ' + FP.dinero.formato(Math.abs(r.diferenciaMeta)) + ' más de ahorro (o menos gasto).'),
-          ui.distintivo(r.cumpleMeta ? 'Meta cumplida' : 'Meta pendiente',
-            r.cumpleMeta ? 'exito' : 'advertencia', r.cumpleMeta ? '✓' : '⏳')
-        ])
-      );
-    }
-
-    return el('section', { class: 'tarjeta' }, nodos);
+  /** Margen (o faltante) = ingresos previstos − suma de topes − meta de ahorro. */
+  function tarjetaPlan(coherencia, periodo) {
+    const falta = coherencia.exceso > 0;
+    return ui.tarjetaSaldo({
+      ariaLabel: 'Cómo queda tu plan de ' + U.periodoLegible(periodo),
+      etiqueta: (falta ? 'Faltante' : 'Margen sin asignar') + ' · ' + U.periodoLegible(periodo),
+      cifra: FP.dinero.formatoSaldo(-coherencia.exceso),
+      pie: 'Ingresos previstos (incluye recurrentes aún no generados) − topes − meta de ahorro.',
+      items: [
+        { etiqueta: 'Ingresos previstos', icono: '↑', monto: coherencia.ingresosPrevistos },
+        { etiqueta: 'Topes de gasto', icono: '↓', monto: coherencia.sumaTopes },
+        { etiqueta: 'Meta de ahorro', icono: '◎', monto: coherencia.metaAhorro }
+      ]
+    });
   }
 
   /* ------------------------------------- Plan de ahorro a un objetivo --- */
@@ -292,13 +238,6 @@ FP.vistas.presupuesto = (function () {
     ]);
   }
 
-  function dato(etiqueta, valor) {
-    return el('div', null, [
-      el('div', { class: 'resumen__etiqueta' }, etiqueta),
-      el('div', { class: 'num', style: 'font-size:1.35rem;font-weight:700;margin-top:4px' }, valor)
-    ]);
-  }
-
   /* --------------------------------------------------- Tabla topes ---- */
 
   function tabla(filas, periodo, ctx) {
@@ -307,12 +246,19 @@ FP.vistas.presupuesto = (function () {
     filas.forEach(function (f) {
       const sinTope = f.tope === null;
       cuerpo.appendChild(el('tr', null, [
-        el('th', { scope: 'row', style: 'font-weight:600' }, [
-          f.categoria.icono ? el('span', { 'aria-hidden': 'true' }, f.categoria.icono + ' ') : null,
+        el('th', { scope: 'row' }, el('span', { class: 'tabla__categoria' }, [
+          el('span', { class: 'movimiento__marca movimiento__marca--gasto', 'aria-hidden': 'true' },
+            f.categoria.icono || '📦'),
           f.categoria.nombre
-        ]),
+        ])),
         el('td', { class: 'num nowrap' }, sinTope
-          ? el('span', { class: 'texto-apagado' }, '—')
+          ? el('button', {
+            type: 'button', class: 'btn btn--sm',
+            'aria-label': 'Definir tope de ' + f.categoria.nombre,
+            onclick: function () {
+              FP.formularios.tope({ periodo: periodo, categoriaId: f.categoriaId, alGuardar: ctx.refrescar });
+            }
+          }, '＋ Definir')
           : FP.dinero.formato(f.tope)),
         el('td', { class: 'num nowrap' }, FP.dinero.formato(f.gastado)),
         el('td', {
@@ -350,7 +296,12 @@ FP.vistas.presupuesto = (function () {
   }
 
   function filaTope(f, periodo, ctx) {
-    return ui.filaTope(f, { acciones: function (fila) { return acciones(fila, periodo, ctx); } });
+    return ui.filaTope(f, {
+      acciones: function (fila) { return acciones(fila, periodo, ctx); },
+      alDefinir: function (fila) {
+        FP.formularios.tope({ periodo: periodo, categoriaId: fila.categoriaId, alGuardar: ctx.refrescar });
+      }
+    });
   }
 
   function acciones(f, periodo, ctx) {

@@ -305,7 +305,25 @@ FP.ui = (function () {
     function fuera(ev) { if (!envoltura.contains(ev.target)) cerrar(); }
     function teclado(ev) { if (ev.key === 'Escape') { cerrar(); boton.focus(); } }
 
+    /* En el teléfono el menú es una hoja inferior: botones grandes al alcance del pulgar
+       y sin riesgo de que un contenedor con desplazamiento lo recorte. */
+    function abrirHoja() {
+      let hoja = null;
+      const lista = el('div', { class: 'lista-acciones' }, items.filter(Boolean).map(function (item) {
+        return el('button', {
+          type: 'button',
+          class: 'lista-acciones__item' + (item.peligro ? ' peligro' : ''),
+          onclick: function () { hoja.cerrar(); item.alHacerClic(); }
+        }, [
+          item.icono ? el('span', { class: 'lista-acciones__icono', 'aria-hidden': 'true' }, item.icono) : null,
+          item.etiqueta
+        ]);
+      }));
+      hoja = dialogo({ titulo: etiqueta || 'Acciones', clase: 'dialogo--acciones', contenido: lista });
+    }
+
     function abrir() {
+      if (window.matchMedia('(max-width: 720px)').matches) { abrirHoja(); return; }
       menu = el('div', { class: 'menu', role: 'menu' });
       items.filter(Boolean).forEach(function (item) {
         menu.appendChild(el('button', {
@@ -337,6 +355,9 @@ FP.ui = (function () {
   /** Fila de movimiento (lista compacta del dashboard y tarjetas en móvil). */
   function filaMovimiento(mov, opciones) {
     const op = opciones || {};
+    if ((op.alEditar || op.alEliminar) && window.matchMedia('(max-width: 720px)').matches) {
+      return filaMovimientoMovil(mov, op);
+    }
     const cat = FP.store.categoria(mov.categoriaId);
     const esIngreso = mov.tipo === 'ingreso';
 
@@ -389,6 +410,101 @@ FP.ui = (function () {
           : null
       ], 'Acciones del movimiento: ' + (mov.descripcion || 'movimiento')) : null
     ]);
+  }
+
+  /** Marcas de estado de un movimiento (transferencia, recurrente, por revisar, futuro). */
+  function marcasMovimiento(mov, cortas) {
+    return [
+      FP.dominio.esTransferencia(mov) ? distintivo('No cuenta como gasto', 'neutro', '↔') : null,
+      (mov.recurrenteId || mov.recurrenteOrigen)
+        ? distintivo(cortas ? 'Recurrente' : 'Generado por recurrente', 'info', '🔁') : null,
+      mov.revisar ? distintivo('Por revisar', 'advertencia', '👁') : null,
+      mov.fecha > U.hoyISO() ? distintivo('Fecha futura', 'neutro', '📅') : null
+    ].filter(Boolean);
+  }
+
+  /**
+   * Fila de movimiento en el teléfono: toda la fila es un botón que abre la hoja
+   * de detalle (sin «⋮», para dejarle el ancho al título y al monto).
+   * opciones = { sinFecha (la lista ya va agrupada por día), mostrarAnio, alEditar, alEliminar, alRevisar }
+   */
+  function filaMovimientoMovil(mov, op) {
+    const cat = FP.store.categoria(mov.categoriaId);
+    const esIngreso = mov.tipo === 'ingreso';
+    const nombreCat = cat ? cat.nombre : 'Sin categoría';
+    const titulo = mov.descripcion || nombreCat;
+
+    const partes = [];
+    if (mov.descripcion) partes.push(nombreCat);
+    if (mov.tipo === 'gasto' && FP.medios.esValido(mov.medioPago)) partes.push(FP.medios.info(mov.medioPago).etiqueta);
+    if (!op.sinFecha) partes.push(U.fechaCorta(mov.fecha, op.mostrarAnio));
+    if (!partes.length) partes.push(esIngreso ? 'Ingreso' : 'Gasto');
+
+    const marcas = marcasMovimiento(mov, true);
+    const monto = FP.dinero.formatoConSigno(mov.monto, mov.tipo);
+
+    return el('button', {
+      type: 'button', class: 'movimiento movimiento--boton',
+      'aria-haspopup': 'dialog',
+      'aria-label': (esIngreso ? 'Ingreso' : 'Gasto') + ': ' + titulo + ', ' + monto + ', ' +
+        U.fechaCorta(mov.fecha, op.mostrarAnio) + '. Ver detalle',
+      onclick: function () { hojaMovimiento(mov, op); }
+    }, [
+      el('span', {
+        class: 'movimiento__marca movimiento__marca--' + mov.tipo, 'aria-hidden': 'true'
+      }, cat && cat.icono ? cat.icono : (esIngreso ? '↑' : '↓')),
+      el('span', { class: 'movimiento__cuerpo' }, [
+        el('span', { class: 'movimiento__titulo' }, titulo),
+        el('span', { class: 'movimiento__sub' }, partes.join(' · ')),
+        marcas.length ? el('span', { class: 'movimiento__marcas' }, marcas) : null
+      ]),
+      el('span', { class: 'movimiento__monto monto--' + mov.tipo }, monto)
+    ]);
+  }
+
+  /** Hoja inferior con el detalle de un movimiento y sus acciones. */
+  function hojaMovimiento(mov, op) {
+    const cat = FP.store.categoria(mov.categoriaId);
+    const esIngreso = mov.tipo === 'ingreso';
+    const marcas = marcasMovimiento(mov, false);
+    let hoja = null;
+
+    function dato(nombre, valor) {
+      return el('div', { class: 'detalle__fila' }, [el('dt', null, nombre), el('dd', null, valor)]);
+    }
+
+    const contenido = el('div', { class: 'detalle' }, [
+      el('p', { class: 'detalle__monto monto--' + mov.tipo }, FP.dinero.formatoConSigno(mov.monto, mov.tipo)),
+      marcas.length ? el('div', { class: 'detalle__marcas' }, marcas) : null,
+      el('dl', { class: 'detalle__lista' }, [
+        dato('Tipo', esIngreso ? 'Ingreso' : 'Gasto'),
+        dato('Categoría', (cat && cat.icono ? cat.icono + ' ' : '') + (cat ? cat.nombre : 'Sin categoría')),
+        dato('Fecha', U.fechaLarga(mov.fecha)),
+        esIngreso ? null : dato('Medio de pago', FP.medios.info(FP.medios.de(mov)).etiqueta),
+        mov.descripcion ? dato('Descripción', mov.descripcion) : null
+      ]),
+      (op.alRevisar && mov.revisar) ? el('button', {
+        type: 'button', class: 'btn btn--bloque',
+        onclick: function () { hoja.cerrar(); op.alRevisar(mov); }
+      }, '✓ Marcar como revisado') : null
+    ]);
+
+    hoja = dialogo({
+      titulo: mov.descripcion || (cat ? cat.nombre : (esIngreso ? 'Ingreso' : 'Gasto')),
+      clase: 'dialogo--detalle',
+      contenido: contenido,
+      acciones: [
+        op.alEliminar ? {
+          etiqueta: 'Eliminar', clase: 'btn--peligro-suave',
+          alHacerClic: function (cerrar) { cerrar(); op.alEliminar(mov); }
+        } : null,
+        op.alEditar ? {
+          etiqueta: 'Editar', clase: 'btn--primario',
+          alHacerClic: function (cerrar) { cerrar(); op.alEditar(mov); }
+        } : null
+      ].filter(Boolean)
+    });
+    return hoja;
   }
 
   /**
@@ -462,7 +578,11 @@ FP.ui = (function () {
           fila.categoria.nombre + ': ' + U.formatoPorcentaje(fila.porcentaje, 0) + ' del tope'),
 
       el('div', { class: 'tope__pie' }, [
-        el('span', {
+        (sinTope && op.alDefinir) ? el('button', {
+          type: 'button', class: 'btn btn--sm',
+          'aria-label': 'Definir tope de ' + fila.categoria.nombre,
+          onclick: function () { op.alDefinir(fila); }
+        }, '＋ Definir tope') : el('span', {
           class: 'tope__disponible',
           style: excedido ? 'color:var(--error)' : (sinTope ? 'color:var(--texto-3)' : '')
         }, sinTope
@@ -472,6 +592,129 @@ FP.ui = (function () {
             : 'Disponible: ' + FP.dinero.formato(fila.disponible))),
         distintivoEstado(fila.estado, fila.etiquetaEstado)
       ])
+    ]);
+  }
+
+  /**
+   * Tarjeta de cifras con el degradado de la marca (Inicio, Movimientos, Histórico).
+   * opciones = { etiqueta, cifra, pie, compacta, ariaLabel,
+   *   items: [{ etiqueta, icono, monto, accion, alHacerClic, presionado }] }
+   * Un item con alHacerClic es un botón (con aria-pressed si trae `presionado`);
+   * sin él, es solo informativo.
+   */
+  function tarjetaSaldo(opciones) {
+    const op = opciones || {};
+    return el('section', {
+      class: 'tarjeta-saldo' + (op.compacta ? ' tarjeta-saldo--compacta' : '') + (op.clase ? ' ' + op.clase : ''),
+      'aria-label': op.ariaLabel || op.etiqueta
+    }, [
+      el('div', { class: 'tarjeta-saldo__principal' }, [
+        el('p', { class: 'tarjeta-saldo__etiqueta' }, op.etiqueta),
+        el('p', { class: 'tarjeta-saldo__cifra num' }, op.cifra),
+        op.pie ? el('p', { class: 'tarjeta-saldo__pie' }, op.pie) : null
+      ]),
+      (op.items && op.items.length) ? el('div', { class: 'tarjeta-saldo__items' }, op.items.map(itemSaldo)) : null
+    ]);
+  }
+
+  /** `item.cifra` (texto ya formateado, p. ej. con signo) reemplaza a `item.monto`. */
+  function itemSaldo(item) {
+    const boton = !!item.alHacerClic;
+    const cifra = item.cifra !== undefined ? item.cifra : FP.dinero.formato(item.monto);
+    return el(boton ? 'button' : 'div', {
+      type: boton ? 'button' : null,
+      class: 'tarjeta-saldo__item' + (boton ? '' : ' tarjeta-saldo__item--dato'),
+      onclick: item.alHacerClic || null,
+      'aria-pressed': (boton && item.presionado !== undefined) ? String(!!item.presionado) : null,
+      'aria-label': boton ? item.etiqueta + ': ' + cifra + (item.accion ? '. ' + item.accion : '') : null
+    }, [
+      el('span', { class: 'tarjeta-saldo__icono', 'aria-hidden': 'true' }, item.icono),
+      el('span', { class: 'tarjeta-saldo__texto' }, [
+        el('span', { class: 'tarjeta-saldo__monto num' }, cifra),
+        el('span', { class: 'tarjeta-saldo__nombre' }, item.etiqueta)
+      ]),
+      boton ? el('span', { class: 'tarjeta-saldo__flecha', 'aria-hidden': 'true' },
+        item.presionado ? '✓' : '›') : null
+    ]);
+  }
+
+  /** Tarjeta de la meta de ahorro del mes (Inicio y Presupuesto). `r` = dominio.resumen. */
+  function tarjetaMeta(r, periodo, alGuardar) {
+    const editar = function () { FP.formularios.metaAhorro({ periodo: periodo, alGuardar: alGuardar }); };
+    let contenido;
+
+    if (r.hayMeta) {
+      const severidad = r.cumpleMeta ? 'exito' : (r.ahorroReal < 0 ? 'error' : 'advertencia');
+      contenido = el('div', { class: 'meta' }, [
+        el('div', { class: 'meta__fila' }, [
+          el('h2', { class: 'seccion__titulo' }, 'Meta de ahorro'),
+          el('button', { type: 'button', class: 'btn btn--sm', onclick: editar }, 'Editar meta')
+        ]),
+        el('div', { class: 'meta__fila' }, [
+          el('p', { class: 'meta__pct num' }, U.formatoPorcentaje(r.porcentajeMeta, 0)),
+          el('span', { class: 'meta__cifra' }, FP.dinero.formato(r.metaAhorro))
+        ]),
+        barraProgreso(U.clamp(r.porcentajeMeta, 0, 100), severidad,
+          'Avance de la meta de ahorro: ' + U.formatoPorcentaje(r.porcentajeMeta, 0)),
+        el('div', { class: 'meta__fila' }, [
+          el('span', { class: 'texto-sm texto-apagado num' },
+            (r.parcial ? 'Cumplimiento del mes completo: ' : 'Cumplimiento: ') +
+            FP.dinero.formatoSaldo(r.ahorroMes) + ' de ' + FP.dinero.formato(r.metaAhorro)),
+          distintivo(
+            r.cumpleMeta ? 'Meta cumplida' : 'Meta pendiente',
+            r.cumpleMeta ? 'exito' : 'advertencia',
+            r.cumpleMeta ? '✓' : '⏳'
+          )
+        ]),
+        el('p', { class: 'meta__mensaje', style: 'color:var(--' + severidad + ')' },
+          r.cumpleMeta
+            ? 'Vas ' + FP.dinero.formato(r.diferenciaMeta) + ' por encima de tu meta.'
+            : 'Te faltan ' + FP.dinero.formato(Math.abs(r.diferenciaMeta)) + ' para cumplir la meta.')
+      ]);
+    } else {
+      contenido = el('div', { class: 'meta meta--vacia' }, [
+        el('span', { class: 'meta__icono', 'aria-hidden': 'true' }, '🎯'),
+        el('div', { class: 'meta__vacia-texto' }, [
+          el('h2', { class: 'seccion__titulo' }, 'Sin meta de ahorro'),
+          el('p', { class: 'texto-sm texto-apagado solo-escritorio' },
+            'Define cuánto quieres que te quede este mes para medir tu avance. ' +
+            'Tu ahorro real actual es ' + FP.dinero.formatoSaldo(r.ahorroMes) + '.'),
+          /* En el teléfono es una fila baja: el ahorro real ya está en la tarjeta de arriba. */
+          el('p', { class: 'texto-sm texto-apagado solo-movil' }, 'Define cuánto quieres ahorrar este mes.')
+        ]),
+        el('button', {
+          type: 'button', class: 'btn btn--primario', onclick: editar,
+          'aria-label': 'Definir meta de ahorro'
+        }, [
+          el('span', { class: 'solo-escritorio' }, 'Definir meta'),
+          el('span', { class: 'solo-movil' }, 'Definir')
+        ])
+      ]);
+    }
+
+    return el('section', { class: 'tarjeta', 'aria-label': 'Meta de ahorro de ' + U.periodoLegible(periodo) }, [contenido]);
+  }
+
+  /** Mosaico compacto de una categoría del presupuesto (rejilla del Inicio). */
+  function mosaicoTope(fila, opciones) {
+    const op = opciones || {};
+    const sinTope = fila.tope === null;
+
+    return el('div', { class: 'mosaico' + (fila.estado === 'excedido' ? ' mosaico--excedido' : '') }, [
+      el('div', { class: 'mosaico__cabecera' }, [
+        el('span', { class: 'mosaico__icono', 'aria-hidden': 'true' }, fila.categoria.icono || '📦'),
+        op.acciones ? op.acciones(fila) : null
+      ]),
+      el('div', { class: 'mosaico__nombre' }, fila.categoria.nombre),
+      el('div', { class: 'mosaico__pct num' }, sinTope ? FP.dinero.formato(fila.gastado) : U.formatoPorcentaje(fila.porcentaje, 0)),
+      sinTope
+        ? null
+        : barraProgreso(fila.porcentaje, FP.dominio.SEVERIDAD_ESTADO[fila.estado],
+          fila.categoria.nombre + ': ' + U.formatoPorcentaje(fila.porcentaje, 0) + ' del tope'),
+      el('div', { class: 'mosaico__cifras num' }, sinTope
+        ? 'Gastado · sin tope definido'
+        : FP.dinero.formato(fila.gastado) + ' de ' + FP.dinero.formato(fila.tope)),
+      sinTope ? null : distintivoEstado(fila.estado, fila.etiquetaEstado)
     ]);
   }
 
@@ -715,7 +958,7 @@ FP.ui = (function () {
     distintivo: distintivo, distintivoEstado: distintivoEstado, distintivoMedio: distintivoMedio,
     barraProgreso: barraProgreso,
     vacio: vacio, esqueleto: esqueleto, cabeceraSeccion: cabeceraSeccion, menuAcciones: menuAcciones,
-    filaMovimiento: filaMovimiento, filaTope: filaTope, tarjetaAlerta: tarjetaAlerta,
+    filaMovimiento: filaMovimiento, filaTope: filaTope, mosaicoTope: mosaicoTope, tarjetaSaldo: tarjetaSaldo, tarjetaMeta: tarjetaMeta, tarjetaAlerta: tarjetaAlerta,
     tarjetaMediosPago: tarjetaMediosPago,
     campo: campo, campoMonto: campoMonto, selectorCategoria: selectorCategoria, selectorTipo: selectorTipo,
     selectorMedioPago: selectorMedioPago

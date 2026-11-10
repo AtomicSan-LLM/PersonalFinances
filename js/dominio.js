@@ -110,6 +110,30 @@ FP.dominio = (function () {
     return ordenarRecientes(lista);
   }
 
+  /**
+   * Agrupa una lista de movimientos por día, conservando su orden. Cada grupo
+   * trae los totales del día: `ingresos` y `gastos` (las transferencias se
+   * listan, pero no suman al gasto, igual que en el resumen del mes).
+   */
+  function agruparPorDia(lista) {
+    const grupos = [];
+    let grupo = null;
+    (lista || []).forEach(function (m) {
+      if (!grupo || grupo.fecha !== m.fecha) {
+        grupo = { fecha: m.fecha, movimientos: [], ingresos: 0, gastos: 0 };
+        grupos.push(grupo);
+      }
+      grupo.movimientos.push(m);
+    });
+    grupos.forEach(function (g) {
+      g.ingresos = U.suma(g.movimientos.filter(function (m) { return m.tipo === 'ingreso'; }),
+        function (m) { return m.monto; });
+      g.gastos = U.suma(g.movimientos.filter(function (m) { return m.tipo === 'gasto' && !esTransferencia(m); }),
+        function (m) { return m.monto; });
+    });
+    return grupos;
+  }
+
   /* ================================================== resumen del mes == */
 
   /**
@@ -472,6 +496,24 @@ FP.dominio = (function () {
   }
 
   /**
+   * Compromiso mensual de los recurrentes vigentes en `periodo` (por defecto, el
+   * mes actual). Los de monto variable cuentan con su monto de referencia y las
+   * transferencias (p. ej. pago de tarjeta) no suman como gasto, igual que en los totales.
+   */
+  function compromisoRecurrente(periodo) {
+    const p = periodo || U.periodoActual();
+    const vigentes = S().recurrentes.filter(function (r) { return vigenteEn(r, p); });
+    const gastos = vigentes.filter(function (r) { return r.tipo === 'gasto' && !esTransferencia(r); });
+    const ingresos = vigentes.filter(function (r) { return r.tipo === 'ingreso'; });
+    const total = function (lista) { return U.suma(lista, function (r) { return Number(r.monto) || 0; }); };
+    return {
+      gastos: total(gastos), nGastos: gastos.length,
+      ingresos: total(ingresos), nIngresos: ingresos.length,
+      neto: total(ingresos) - total(gastos)
+    };
+  }
+
+  /**
    * FR-023 / PA-09 — Genera los movimientos de los recurrentes vigentes.
    * Regla adoptada: generación automática hasta el mes actual (nunca meses
    * futuros), con posibilidad de revisar y editar el movimiento generado.
@@ -561,9 +603,23 @@ FP.dominio = (function () {
     });
   }
 
-  /** Serie cronológica ascendente de los últimos `n` meses (para gráficos). */
-  function serieMensual(n, rango) {
+  /**
+   * Último mes de una ventana de `n` meses que debe incluir a `periodo` (gráfica del
+   * Inicio). Si `periodo` cae dentro de los últimos `n` meses, la ventana termina hoy
+   * y así se ve también lo que vino después; si es más antiguo (o futuro), termina en él.
+   */
+  function finDeVentana(periodo, n) {
     const actual = U.periodoActual();
+    const atras = U.diffMeses(periodo, actual);
+    return (atras >= 0 && atras < (n || 12)) ? actual : periodo;
+  }
+
+  /**
+   * Serie cronológica ascendente de los últimos `n` meses (para gráficos). Termina
+   * en `fin` (por defecto, el mes actual) y no empieza antes del primer mes con datos.
+   */
+  function serieMensual(n, rango, fin) {
+    const actual = fin || U.periodoActual();
     const conDatos = periodosConDatos();
     const masAntiguo = conDatos.length ? conDatos[conDatos.length - 1] : actual;
     const disponibles = U.diffMeses(masAntiguo, actual) + 1;
@@ -574,6 +630,26 @@ FP.dominio = (function () {
       serie.push(resumen(U.sumarMeses(actual, -i), rango));
     }
     return serie;
+  }
+
+  /**
+   * Totales de una serie mensual (tarjeta de cifras del Histórico).
+   * Los promedios dividen solo entre los meses con movimientos: un mes vacío
+   * dentro de la ventana no debe bajar el promedio como si se hubiera gastado 0.
+   */
+  function totalesSerie(serie) {
+    const conDatos = serie.filter(function (r) { return r.nMovimientos > 0; });
+    const n = conDatos.length;
+    const ingresos = U.suma(conDatos, function (r) { return r.ingresos; });
+    const gastos = U.suma(conDatos, function (r) { return r.gastos; });
+    return {
+      mesesConDatos: n,
+      ingresos: ingresos,
+      gastos: gastos,
+      ahorroAcumulado: ingresos - gastos,
+      ingresoPromedio: n ? ingresos / n : 0,
+      gastoPromedio: n ? gastos / n : 0
+    };
   }
 
   /* ======================================================= comparar === */
@@ -754,9 +830,10 @@ FP.dominio = (function () {
     coherenciaPresupuesto: coherenciaPresupuesto,
     alertas: alertas, contarAlertas: contarAlertas,
     alertasTodas: alertasTodas, contarAlertasTodas: contarAlertasTodas,
-    generarRecurrentes: generarRecurrentes, vigenteEn: vigenteEn,
+    generarRecurrentes: generarRecurrentes, vigenteEn: vigenteEn, compromisoRecurrente: compromisoRecurrente,
     pendientesDeRevision: pendientesDeRevision, proximosRecurrentes: proximosRecurrentes,
-    periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual,
+    agruparPorDia: agruparPorDia,
+    periodosConDatos: periodosConDatos, historico: historico, serieMensual: serieMensual, finDeVentana: finDeVentana, totalesSerie: totalesSerie,
     comparar: comparar,
     validarMovimiento: validarMovimiento, validarCategoria: validarCategoria,
     validarRecurrente: validarRecurrente, hayErrores: hayErrores

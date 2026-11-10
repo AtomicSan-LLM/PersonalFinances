@@ -404,6 +404,33 @@
     igual(D.movimientosDe(desde).length, 1);
   });
 
+  prueba('compromisoRecurrente suma solo los recurrentes vigentes del mes', function () {
+    limpiar();
+    S.crearRecurrente({ tipo: 'gasto', monto: 1000000, descripcion: 'Arriendo', categoriaId: cat('Vivienda'), diaMes: 1, desde: ACTUAL });
+    S.crearRecurrente({ tipo: 'gasto', monto: 30000, descripcion: 'Streaming', categoriaId: cat('Entretenimiento'), diaMes: 5, desde: ACTUAL });
+    S.crearRecurrente({ tipo: 'ingreso', monto: 4500000, descripcion: 'Salario', categoriaId: cat('Salario'), diaMes: 30, desde: ACTUAL });
+    S.crearRecurrente({ tipo: 'gasto', monto: 999, descripcion: 'Futuro', categoriaId: cat('Mercado'), diaMes: 1, desde: U.sumarMeses(ACTUAL, 1) });
+    const pausado = S.crearRecurrente({ tipo: 'gasto', monto: 777, descripcion: 'Pausado', categoriaId: cat('Mercado'), diaMes: 1, desde: ACTUAL });
+    S.actualizarRecurrente(pausado.id, { activo: false });
+
+    const c = D.compromisoRecurrente(ACTUAL);
+    igual(c.gastos, 1030000, 'sin el futuro ni el pausado');
+    igual(c.nGastos, 2);
+    igual(c.ingresos, 4500000);
+    igual(c.nIngresos, 1);
+    igual(c.neto, 3470000, 'ingresos − gastos');
+  });
+
+  prueba('compromisoRecurrente no cuenta las transferencias como gasto', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearRecurrente({ tipo: 'gasto', monto: 500000, descripcion: 'Pago tarjeta', categoriaId: pagoTC.id, diaMes: 10, desde: ACTUAL });
+    S.crearRecurrente({ tipo: 'gasto', monto: 20000, descripcion: 'Gimnasio', categoriaId: cat('Salud'), diaMes: 3, desde: ACTUAL });
+    const c = D.compromisoRecurrente(ACTUAL);
+    igual(c.gastos, 20000);
+    igual(c.nGastos, 1);
+  });
+
   prueba('No se generan movimientos de meses futuros', function () {
     limpiar();
     S.crearRecurrente({
@@ -1076,6 +1103,97 @@
     igual(serie[serie.length - 1].gastos, 5, 'último mes de la serie');
     igual(serie[serie.length - 2].gastos, 10, 'mes anterior de la serie');
     igual(D.historico()[0].gastos, 50, 'sin rango sigue siendo el mes completo');
+  });
+
+  prueba('totalesSerie: acumula el ahorro y promedia solo los meses con movimientos', function () {
+    limpiar();
+    const haceDos = U.sumarMeses(ACTUAL, -2);
+    S.crearMovimiento({ fecha: haceDos + '-05', monto: 300, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: haceDos + '-06', monto: 100, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 100, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '06', monto: 50, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const serie = D.serieMensual(3);
+    igual(serie.length, 3, 'la ventana incluye el mes vacío');
+    const t = D.totalesSerie(serie);
+    igual(t.mesesConDatos, 2, 'meses con movimientos');
+    igual(t.ingresos, 400, 'ingresos');
+    igual(t.gastos, 150, 'gastos');
+    igual(t.ahorroAcumulado, 250, 'ahorro acumulado = ingresos − gastos');
+    igual(t.ingresoPromedio, 200, 'el mes vacío no baja el promedio de ingresos');
+    igual(t.gastoPromedio, 75, 'el mes vacío no baja el promedio de gastos');
+  });
+
+  prueba('finDeVentana: termina hoy si el mes consultado está en la ventana; si no, en ese mes', function () {
+    igual(D.finDeVentana(ACTUAL, 6), ACTUAL, 'mes actual');
+    igual(D.finDeVentana(U.sumarMeses(ACTUAL, -2), 6), ACTUAL, 'hace 2 meses: la ventana sigue terminando hoy');
+    igual(D.finDeVentana(U.sumarMeses(ACTUAL, -5), 6), ACTUAL, 'hace 5 meses: último mes que aún cabe');
+    const haceSeis = U.sumarMeses(ACTUAL, -6);
+    igual(D.finDeVentana(haceSeis, 6), haceSeis, 'hace 6 meses: ya no cabe, termina en él');
+    const futuro = U.sumarMeses(ACTUAL, 1);
+    igual(D.finDeVentana(futuro, 6), futuro, 'mes futuro: termina en él');
+  });
+
+  prueba('serieMensual con `fin`: la ventana termina en ese mes y contiene sus cifras', function () {
+    limpiar();
+    const haceOcho = U.sumarMeses(ACTUAL, -8);
+    const haceSiete = U.sumarMeses(ACTUAL, -7);
+    S.crearMovimiento({ fecha: haceOcho + '-05', monto: 200, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: haceSiete + '-05', monto: 70, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 999, tipo: 'gasto', categoriaId: cat('Mercado') });
+
+    const serie = D.serieMensual(6, null, haceSiete);
+    igual(serie.length, 2, 'no empieza antes del primer mes con datos');
+    igual(serie[0].periodo, haceOcho, 'primer mes');
+    igual(serie[0].ingresos, 200);
+    igual(serie[1].periodo, haceSiete, 'termina en el mes pedido');
+    igual(serie[1].gastos, 70);
+
+    const hoy = D.serieMensual(6);
+    igual(hoy.length, 6, 'sin `fin` sigue terminando en el mes actual');
+    igual(hoy[5].periodo, ACTUAL);
+    igual(hoy[5].gastos, 999);
+  });
+
+  prueba('agruparPorDia: un grupo por fecha, en orden, con el gasto del día sin transferencias', function () {
+    limpiar();
+    const pagoTC = S.crearCategoria({ nombre: 'Pago T.C', tipo: 'gasto', esTransferencia: true });
+    S.crearMovimiento({ fecha: MES + '03', monto: 1000, tipo: 'ingreso', categoriaId: cat('Salario') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 30, tipo: 'gasto', categoriaId: cat('Mercado') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 20, tipo: 'gasto', categoriaId: cat('Transporte') });
+    S.crearMovimiento({ fecha: MES + '05', monto: 500, tipo: 'gasto', categoriaId: pagoTC.id });
+    S.crearMovimiento({ fecha: MES + '05', monto: 7, tipo: 'ingreso', categoriaId: cat('Salario') });
+
+    const movs = D.filtrarMovimientos(ACTUAL, {});
+    const g = D.agruparPorDia(movs);
+    igual(g.length, 2, 'dos días');
+    igual(g[0].fecha, MES + '05', 'el más reciente primero');
+    igual(g[0].movimientos.length, 4, 'la transferencia se lista');
+    igual(g[0].gastos, 50, 'pero no suma al gasto del día');
+    igual(g[0].ingresos, 7);
+    igual(g[1].gastos, 0);
+    igual(g[1].ingresos, 1000);
+    igual(g[0].gastos + g[1].gastos, D.resumen(ACTUAL).gastos, 'los días suman el gasto del mes');
+    igual(g[0].ingresos + g[1].ingresos, D.resumen(ACTUAL).ingresos, 'y el ingreso del mes');
+    igual(D.agruparPorDia([]).length, 0, 'lista vacía');
+  });
+
+  prueba('diaRelativo: Hoy, Ayer, Mañana y día de la semana con fecha corta', function () {
+    igual(U.diaRelativo('2026-09-14', '2026-09-14'), 'Hoy');
+    igual(U.diaRelativo('2026-09-13', '2026-09-14'), 'Ayer');
+    igual(U.diaRelativo('2026-09-15', '2026-09-14'), 'Mañana');
+    igual(U.diaRelativo('2026-09-07', '2026-09-14'), 'lun 7 sep', 'el 7 de septiembre de 2026 es lunes');
+    igual(U.diaRelativo('2026-08-31', '2026-09-01'), 'Ayer', 'cruza el fin de mes');
+    igual(U.diaRelativo('2025-12-31', '2026-09-14'), 'mié 31 dic 2025', 'otro año: lo indica');
+  });
+
+  prueba('totalesSerie: sin movimientos los promedios son 0, no NaN', function () {
+    limpiar();
+    const t = D.totalesSerie(D.serieMensual(6));
+    igual(t.mesesConDatos, 0);
+    igual(t.ingresoPromedio, 0);
+    igual(t.gastoPromedio, 0);
+    igual(t.ahorroAcumulado, 0);
   });
 
   prueba('Rango: validarRango acepta de 1 hasta el máximo de días y rechaza lo demás', function () {

@@ -5,7 +5,30 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   0. Fuente: Plus Jakarta Sans (variable, OFL — ver fuentes/OFL.txt).
+   Va dentro del repo para que la app funcione sin internet.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("../fuentes/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("../fuentes/plus-jakarta-sans-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* --------------------------------------------------------------------------
    1. Tokens
+   Paleta morado-azul (referencia visual: capturas en referencias-diseno/hubio).
+   Contraste verificado: texto ≥ 4.5:1 y bordes de campos ≥ 3:1 en ambos temas.
    -------------------------------------------------------------------------- */
 :root {
   /* Escala de espaciado: 4 / 8 / 12 / 16 / 24 / 32 / 48 */
@@ -17,31 +40,35 @@
   --e-6: 32px;
   --e-7: 48px;
 
-  --radio: 10px;
-  --radio-sm: 6px;
-  --radio-lg: 16px;
+  --radio: 12px;
+  --radio-sm: 8px;
+  --radio-lg: 20px;
 
-  --fuente: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --fuente-cifras: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+  --fuente: "Plus Jakarta Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fuente-cifras: "Plus Jakarta Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
 
   /* Superficies */
-  --bg: #f4f6f9;
+  --bg: #f3f4fa;
   --superficie: #ffffff;
-  --superficie-2: #f0f3f7;
-  --superficie-3: #e7ecf3;
-  --borde: #d8dee7;
-  --borde-fuerte: #b6c0cd;
+  --superficie-2: #f5f5fc;
+  --superficie-3: #eaebf6;
+  --borde: #e2e4f0;
+  --borde-fuerte: #878ca6;
 
   /* Texto */
-  --texto: #131920;
-  --texto-2: #4d5866;
-  --texto-3: #5f6b7a;
+  --texto: #171a2c;
+  --texto-2: #4a4f66;
+  --texto-3: #5d6279;
 
   /* Roles semánticos */
-  --primario: #1a5fa8;
-  --primario-hover: #164f8d;
-  --primario-suave: #e7f0fa;
+  --primario: #5038d8;
+  --primario-hover: #4129c4;
+  --primario-suave: #efedfd;
   --sobre-primario: #ffffff;
+
+  /* Marca: degradado de la tarjeta principal (texto blanco encima ≥ 5.8:1) */
+  --marca-a: #5b3fe0;
+  --marca-b: #2f5bd8;
 
   --ingreso: #0e6f47;
   --ingreso-suave: #e2f4ec;
@@ -63,9 +90,10 @@
   --medio-efectivo: #0b7a75;
   --medio-sin: #8a94a1;
 
-  --sombra: 0 1px 2px rgba(19, 25, 32, .06), 0 2px 8px rgba(19, 25, 32, .05);
-  --sombra-alta: 0 8px 28px rgba(19, 25, 32, .16);
-  --foco: 0 0 0 3px rgba(26, 95, 168, .45);
+  --sombra: 0 1px 2px rgba(23, 26, 60, .04), 0 8px 24px rgba(23, 26, 60, .06);
+  --sombra-alta: 0 12px 36px rgba(23, 26, 60, .16);
+  --sombra-marca: 0 14px 32px rgba(80, 56, 216, .28);
+  --foco: 0 0 0 3px rgba(80, 56, 216, .45);
 
   --ancho-sidebar: 244px;
 
@@ -77,21 +105,24 @@
 :root[data-tema="oscuro"] {
   color-scheme: dark;
 
-  --bg: #0f1419;
-  --superficie: #171d25;
-  --superficie-2: #1e2630;
-  --superficie-3: #26303c;
-  --borde: #2e3945;
-  --borde-fuerte: #445162;
+  --bg: #0d1020;
+  --superficie: #161a2e;
+  --superficie-2: #1d2238;
+  --superficie-3: #262c45;
+  --borde: #2c3250;
+  --borde-fuerte: #666e98;
 
-  --texto: #eaeef4;
-  --texto-2: #b3bdca;
-  --texto-3: #8b97a6;
+  --texto: #eceefa;
+  --texto-2: #b5bad3;
+  --texto-3: #8f95b2;
 
-  --primario: #6aaef0;
-  --primario-hover: #8bc1f5;
-  --primario-suave: #17293c;
-  --sobre-primario: #0c1620;
+  --primario: #a597ff;
+  --primario-hover: #bcb2ff;
+  --primario-suave: #24224a;
+  --sobre-primario: #120f2e;
+
+  --marca-a: #4a33c9;
+  --marca-b: #2a4fc4;
 
   --ingreso: #52c795;
   --ingreso-suave: #122a20;
@@ -112,9 +143,10 @@
   --medio-efectivo: #5fd0c9;
   --medio-sin: #6e7a89;
 
-  --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 2px 10px rgba(0, 0, 0, .3);
-  --sombra-alta: 0 10px 34px rgba(0, 0, 0, .55);
-  --foco: 0 0 0 3px rgba(106, 174, 240, .5);
+  --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+  --sombra-alta: 0 12px 36px rgba(0, 0, 0, .55);
+  --sombra-marca: 0 14px 32px rgba(0, 0, 0, .45);
+  --foco: 0 0 0 3px rgba(165, 151, 255, .55);
 }
 
 /* --------------------------------------------------------------------------
@@ -137,7 +169,7 @@ body {
   background: var(--bg);
 }
 
-h1, h2, h3, h4 { margin: 0; line-height: 1.25; font-weight: 650; }
+h1, h2, h3, h4 { margin: 0; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
 h2 { font-size: 1.15rem; }
 h3 { font-size: 1rem; }
 p { margin: 0; }
@@ -186,7 +218,13 @@ a { color: var(--primario); }
   padding: 0 var(--e-2);
   font-weight: 700; font-size: .95rem; line-height: 1.2;
 }
-.sidebar__logo { font-size: 1.6rem; }
+.sidebar__logo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: var(--radio);
+  background: linear-gradient(135deg, var(--marca-a), var(--marca-b));
+  box-shadow: var(--sombra-marca);
+  font-size: 1.25rem;
+}
 
 .sidebar__nav { flex: 1; overflow-y: auto; }
 .sidebar__nav ul { display: flex; flex-direction: column; gap: 2px; }
@@ -201,10 +239,10 @@ a { color: var(--primario); }
 }
 .nav-enlace:hover { background: var(--superficie-2); color: var(--texto); }
 .nav-enlace[aria-current="page"] {
-  background: var(--primario-suave);
-  color: var(--primario);
+  background: var(--primario);
+  color: var(--sobre-primario);
   font-weight: 650;
-  box-shadow: inset 3px 0 0 var(--primario);
+  box-shadow: var(--sombra-marca);
 }
 .nav-enlace__icono { font-size: 1.05rem; width: 20px; text-align: center; }
 .nav-enlace__globo {
@@ -259,6 +297,8 @@ a { color: var(--primario); }
 .selector-mes__valor { min-width: 12.5rem; }
 .selector-mes__valor:hover, .selector-dias__valor:hover { background: var(--primario-suave); color: var(--primario); }
 .selector-flecha { font-size: .7rem; color: var(--texto-3); }
+/* Nombre abreviado del mes: solo en teléfonos muy angostos (ver sección 12). */
+.selector-mes__corto { display: none; }
 
 .selector-medio { padding: 3px var(--e-3); gap: var(--e-2); }
 .selector-medio--activo { border-color: var(--primario); background: var(--primario-suave); }
@@ -316,26 +356,56 @@ a { color: var(--primario); }
 
 .nav-inferior { display: none; }
 
-.fab { display: none; }
+/* Íconos de línea (barra de pestañas, hoja «Más», cabecera móvil). */
+.icono-linea {
+  display: block; width: 24px; height: 24px; flex: 0 0 auto;
+  fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* Acciones de la cabecera que solo existen en móvil (ver sección 12). */
+.cabecera__movil { display: none; }
+
+/* Hoja «Más»: el resto de pantallas, a un toque de la barra de pestañas. */
+.lista-mas { display: flex; flex-direction: column; gap: 2px; }
+.lista-mas__item {
+  display: flex; align-items: center; gap: var(--e-3);
+  min-height: 56px; padding: var(--e-2);
+  border-radius: var(--radio);
+  color: var(--texto); text-decoration: none; font-weight: 600;
+}
+.lista-mas__item:hover, .lista-mas__item[aria-current="page"] { background: var(--primario-suave); color: var(--primario); }
+.lista-mas__icono {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: var(--radio);
+  background: var(--primario-suave); color: var(--primario);
+}
+.lista-mas__item:hover .lista-mas__icono,
+.lista-mas__item[aria-current="page"] .lista-mas__icono { background: var(--superficie); }
+.lista-mas__texto { flex: 1; min-width: 0; }
+.lista-mas__flecha { color: var(--texto-3); }
+.lista-mas__flecha .icono-linea { width: 18px; height: 18px; }
 
 /* --------------------------------------------------------------------------
    4. Botones y controles
    -------------------------------------------------------------------------- */
+/* Botón secundario: relleno suave de la marca (como «Withdraw» en la referencia). */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--e-2);
   min-height: 40px; padding: var(--e-2) var(--e-4);
-  border: 1px solid var(--borde-fuerte);
-  border-radius: var(--radio);
-  background: var(--superficie); color: var(--texto);
-  font: inherit; font-size: .9rem; font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--primario-suave); color: var(--primario);
+  font: inherit; font-size: .9rem; font-weight: 650;
   cursor: pointer; text-decoration: none;
-  transition: background .12s ease, border-color .12s ease;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
-.btn:hover { background: var(--superficie-2); }
+.btn:hover { border-color: var(--primario); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .btn--primario {
   background: var(--primario); border-color: var(--primario); color: var(--sobre-primario);
+  box-shadow: var(--sombra-marca);
 }
 .btn--primario:hover { background: var(--primario-hover); border-color: var(--primario-hover); }
 
@@ -344,7 +414,7 @@ a { color: var(--primario); }
 .btn--peligro:hover { filter: brightness(.92); }
 
 .btn--fantasma { background: transparent; border-color: transparent; color: var(--texto-2); }
-.btn--fantasma:hover { background: var(--superficie-2); color: var(--texto); }
+.btn--fantasma:hover { background: var(--superficie-2); border-color: transparent; color: var(--texto); }
 
 .btn--bloque { width: 100%; }
 .btn--sm { min-height: 32px; padding: var(--e-1) var(--e-3); font-size: .84rem; }
@@ -367,13 +437,13 @@ a { color: var(--primario); }
 
 .grupo-segmentado {
   display: inline-flex; background: var(--superficie-2);
-  border: 1px solid var(--borde); border-radius: var(--radio); padding: 3px; gap: 3px;
+  border: 1px solid var(--borde); border-radius: 999px; padding: 3px; gap: 3px;
 }
 .grupo-segmentado button {
   border: 0; background: transparent; color: var(--texto-2);
   font: inherit; font-size: .87rem; font-weight: 600;
   padding: var(--e-2) var(--e-4); min-height: 32px;
-  border-radius: var(--radio-sm); cursor: pointer;
+  border-radius: 999px; cursor: pointer;
 }
 .grupo-segmentado button[aria-pressed="true"] {
   background: var(--superficie); color: var(--texto); box-shadow: var(--sombra);
@@ -451,7 +521,9 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
   padding: var(--e-5);
   box-shadow: var(--sombra);
 }
-.tarjeta + .tarjeta { margin-top: var(--e-4); }
+.tarjeta + .tarjeta, .tarjeta + .tarjeta-saldo { margin-top: var(--e-4); }
+/* Dentro de una rejilla el espacio lo pone el gap: sin esto la segunda columna bajaba. */
+.rejilla > .tarjeta + .tarjeta { margin-top: 0; }
 
 .seccion { margin-bottom: var(--e-5); }
 .seccion__cabecera {
@@ -464,6 +536,7 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 .rejilla--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .rejilla--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .rejilla--panel { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; }
+.rejilla--estirar { align-items: stretch; }
 
 /* Resumen del mes */
 .resumen {
@@ -495,11 +568,103 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 .resumen__item--gasto { background: var(--gasto-suave); border-color: transparent; }
 .resumen__item--gasto .resumen__cifra { color: var(--gasto); }
 
+/* Tarjeta principal del Inicio: degradado de marca con texto blanco (≥ 5.8:1). */
+.tarjeta-saldo {
+  position: relative; overflow: hidden;
+  padding: var(--e-5) var(--e-5) var(--e-4);
+  border-radius: var(--radio-lg);
+  background: linear-gradient(135deg, var(--marca-a), var(--marca-b));
+  color: #fff;
+  box-shadow: var(--sombra-marca);
+}
+/* Planos decorativos del fondo, como en la referencia. */
+.tarjeta-saldo::before, .tarjeta-saldo::after {
+  content: ""; position: absolute; pointer-events: none;
+  background: rgba(255, 255, 255, .07); transform: rotate(45deg);
+}
+.tarjeta-saldo::before { width: 260px; height: 260px; right: -90px; top: -150px; border-radius: 40px; }
+.tarjeta-saldo::after { width: 200px; height: 200px; right: 70px; bottom: -150px; border-radius: 32px; }
+.tarjeta-saldo > * { position: relative; }
+.tarjeta-saldo__etiqueta {
+  font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.tarjeta-saldo__cifra {
+  font-size: clamp(2rem, 4.2vw, 2.9rem); font-weight: 700; line-height: 1.1;
+  letter-spacing: -.02em; margin-top: var(--e-2);
+}
+.tarjeta-saldo__pie { font-size: .88rem; margin-top: var(--e-1); }
+.tarjeta-saldo__items {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--e-3);
+  margin-top: var(--e-5);
+}
+.tarjeta-saldo__item {
+  display: flex; align-items: center; gap: var(--e-3);
+  padding: var(--e-3); min-height: 64px;
+  border: 1px solid rgba(255, 255, 255, .22); border-radius: var(--radio);
+  background: rgba(255, 255, 255, .1); color: #fff;
+  font: inherit; text-align: left; cursor: pointer;
+  transition: background-color .15s ease;
+}
+.tarjeta-saldo__item:hover { background: rgba(255, 255, 255, .18); }
+.tarjeta-saldo__item:focus-visible { box-shadow: 0 0 0 3px #fff; }
+.tarjeta-saldo__icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%;
+  background: rgba(255, 255, 255, .2); font-weight: 700;
+}
+.tarjeta-saldo__texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.tarjeta-saldo__monto { font-size: 1.15rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tarjeta-saldo__nombre { font-size: .84rem; }
+.tarjeta-saldo__flecha { font-size: 1.4rem; line-height: 1; }
+.tarjeta-saldo__item[aria-pressed="true"] { background: rgba(255, 255, 255, .28); border-color: #fff; }
+.tarjeta-saldo__item--dato { cursor: default; }
+.tarjeta-saldo__item--dato:hover { background: rgba(255, 255, 255, .1); }
+.aviso-medio + .tarjeta-saldo, .aviso-medio + .aviso-medio { margin-top: var(--e-3); }
+
+/* Variante compacta (Movimientos): cifra a la izquierda y botones a la derecha. */
+.tarjeta-saldo--compacta {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  align-items: center; gap: var(--e-5);
+  padding: var(--e-4) var(--e-5);
+}
+.tarjeta-saldo--compacta .tarjeta-saldo__cifra { font-size: clamp(1.6rem, 3vw, 2.1rem); }
+.tarjeta-saldo--compacta .tarjeta-saldo__items { margin-top: 0; }
+.tarjeta-saldo--compacta:not(:has(.tarjeta-saldo__items)) { grid-template-columns: 1fr; }
+
 /* Meta de ahorro */
-.meta { margin-top: var(--e-5); padding-top: var(--e-5); border-top: 1px solid var(--borde); }
+.meta { display: flex; flex-direction: column; gap: var(--e-1); height: 100%; }
 .meta__fila { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e-3); flex-wrap: wrap; }
 .meta__cifra { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.meta__pct { font-size: 2.2rem; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; margin-top: var(--e-2); }
 .meta__mensaje { font-size: .9rem; font-weight: 600; margin-top: var(--e-2); }
+.meta--vacia { align-items: flex-start; gap: var(--e-2); }
+.meta__vacia-texto { display: flex; flex-direction: column; gap: var(--e-2); }
+.meta--vacia .btn { margin-top: var(--e-2); }
+.meta__icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: var(--radio);
+  background: var(--primario-suave); font-size: 1.3rem;
+}
+
+/* Mosaicos del presupuesto (Inicio) */
+.mosaicos { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--e-3); }
+.mosaico {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--e-4);
+  background: var(--superficie); border: 1px solid var(--borde);
+  border-radius: var(--radio-lg); box-shadow: var(--sombra);
+}
+.mosaico--excedido { border-color: var(--error); }
+.mosaico__cabecera { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--e-2); }
+.mosaico__icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--radio);
+  background: var(--primario-suave); font-size: 1.15rem;
+}
+.mosaico__nombre { font-size: .86rem; font-weight: 600; color: var(--texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mosaico__pct { font-size: 1.45rem; font-weight: 700; letter-spacing: -.01em; }
+.mosaico__cifras { font-size: .8rem; color: var(--texto-3); margin-bottom: var(--e-2); }
+.mosaico .distintivo { align-self: flex-start; }
 
 /* Barra de progreso */
 .barra {
@@ -544,9 +709,9 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 }
 .movimiento:last-child { border-bottom: 0; }
 .movimiento__marca {
-  width: 34px; height: 34px; flex: 0 0 34px;
+  width: 42px; height: 42px; flex: 0 0 42px;
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: .95rem; font-weight: 700;
+  font-size: 1.05rem; font-weight: 700;
 }
 .movimiento__marca--ingreso { background: var(--ingreso-suave); color: var(--ingreso); }
 .movimiento__marca--gasto { background: var(--gasto-suave); color: var(--gasto); }
@@ -558,19 +723,29 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 .monto--ingreso { color: var(--ingreso); }
 .monto--gasto { color: var(--gasto); }
 
-/* Alertas */
+/* Alertas: tarjeta con franja e ícono del color de su severidad (el texto y el
+   distintivo dicen lo mismo, así que el significado no depende solo del color). */
 .alerta {
+  --alerta-color: var(--primario);
+  --alerta-suave: var(--primario-suave);
   display: flex; gap: var(--e-3);
   padding: var(--e-4);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--alerta-color);
   border-radius: var(--radio);
-  border: 1px solid;
+  box-shadow: var(--sombra);
   margin-bottom: var(--e-3);
 }
 .alerta:last-child { margin-bottom: 0; }
-.alerta--advertencia { background: var(--advertencia-suave); border-color: var(--advertencia); }
-.alerta--error { background: var(--error-suave); border-color: var(--error); }
-.alerta--info { background: var(--primario-suave); border-color: var(--primario); }
-.alerta__icono { font-size: 1.15rem; line-height: 1.3; }
+.alerta--advertencia { --alerta-color: var(--advertencia); --alerta-suave: var(--advertencia-suave); }
+.alerta--error { --alerta-color: var(--error); --alerta-suave: var(--error-suave); }
+.alerta__icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%;
+  background: var(--alerta-suave); color: var(--alerta-color);
+  font-size: 1rem; font-weight: 800;
+}
 .alerta__cuerpo { flex: 1; min-width: 0; }
 .alerta__titulo { font-weight: 700; display: flex; align-items: center; gap: var(--e-2); flex-wrap: wrap; }
 .alerta__texto { font-size: .9rem; margin-top: var(--e-1); color: var(--texto); }
@@ -584,13 +759,22 @@ table.tabla th, table.tabla td {
   text-align: left; padding: 10px var(--e-3);
   border-bottom: 1px solid var(--borde); vertical-align: middle;
 }
+table.tabla td { padding-top: var(--e-3); padding-bottom: var(--e-3); }
 table.tabla th {
-  font-size: .78rem; text-transform: uppercase; letter-spacing: .04em;
+  font-size: .76rem; text-transform: uppercase; letter-spacing: .06em;
   color: var(--texto-3); font-weight: 700; white-space: nowrap;
 }
+/* Encabezado como franja suave con los extremos redondeados. */
+table.tabla thead th { background: var(--superficie-2); border-bottom: 0; }
+/* Encabezados de fila (p. ej. el mes en Histórico): texto normal, no de rótulo. */
+table.tabla tbody th { font-size: .9rem; text-transform: none; letter-spacing: 0; color: var(--texto); font-weight: 600; }
+table.tabla thead th:first-child { border-radius: var(--radio) 0 0 var(--radio); }
+table.tabla thead th:last-child { border-radius: 0 var(--radio) var(--radio) 0; }
+.tabla__categoria { display: inline-flex; align-items: center; gap: var(--e-2); font-weight: 600; }
+.tabla__categoria .movimiento__marca { width: 34px; height: 34px; flex-basis: 34px; font-size: .95rem; }
 table.tabla td.num, table.tabla th.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.tabla tbody tr:hover { background: var(--superficie-2); }
-table.tabla tbody tr:last-child td { border-bottom: 0; }
+table.tabla tbody tr:last-child td, table.tabla tbody tr:last-child th { border-bottom: 0; }
 
 /* Tabla que en móvil se apila como tarjetas: ui.apilarTabla() pone en cada celda
    data-etiqueta con el texto de su encabezado. En escritorio no cambia nada. */
@@ -629,6 +813,22 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
 }
 .menu button:hover { background: var(--superficie-2); }
 .menu button.peligro { color: var(--error); }
+
+/* El mismo menú en el teléfono: hoja inferior con botones grandes (ui.menuAcciones). */
+.lista-acciones { display: flex; flex-direction: column; gap: 2px; }
+.lista-acciones__item {
+  display: flex; align-items: center; gap: var(--e-3);
+  width: 100%; min-height: 52px; padding: var(--e-2) var(--e-3);
+  border: 0; border-radius: var(--radio); background: transparent; color: var(--texto);
+  font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.lista-acciones__item:hover { background: var(--superficie-2); }
+.lista-acciones__item.peligro { color: var(--error); }
+.lista-acciones__icono { width: 24px; text-align: center; }
+
+/* Contenido que solo existe en un tamaño de pantalla. */
+@media (min-width: 721px) { .solo-movil { display: none !important; } }
+@media (max-width: 720px) { .solo-escritorio { display: none !important; } }
 
 /* Filtros */
 .filtros {
@@ -762,9 +962,15 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   margin-top: var(--e-3); font-size: .82rem; color: var(--texto-2);
 }
 .grafico__clave { display: inline-flex; align-items: center; gap: 6px; }
-.grafico__muestra { width: 12px; height: 12px; border-radius: 3px; }
+.grafico__muestra { width: 10px; height: 10px; border-radius: 50%; }
 .eje-texto { font-size: 11px; fill: var(--texto-3); }
-.rejilla-linea { stroke: var(--borde); stroke-width: 1; }
+/* Mes resaltado y zonas tocables de la gráfica del Inicio (móvil). */
+.eje-texto--activo { fill: var(--primario); font-weight: 700; }
+.grafico__resalte { fill: var(--primario-suave); }
+.grafico__zona { fill: transparent; cursor: pointer; outline: none; }
+.grafico__zona:focus-visible { stroke: var(--primario); stroke-width: 2; }
+.rejilla-linea { stroke: var(--borde); stroke-width: 1; stroke-dasharray: 4 4; }
+.eje-linea { stroke: var(--borde-fuerte); stroke-width: 1; }
 
 /* --------------------------------------------------------------------------
    10. Utilidades
@@ -807,27 +1013,68 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
 
   .sidebar { display: none; }
 
-  /* Cabecera corta: título, mes y un botón «Filtros». Ya no es fija: así no
-     ocupa un cuarto de la pantalla mientras lees. */
+  /* Cabecera en dos filas bajas. Fila 1: título, «Mes actual» (solo si consultas otro
+     mes) y campana de avisos. Fila 2: selector de mes y botón de filtros. No es fija:
+     así no ocupa pantalla mientras lees. El subtítulo repite lo que ya dice el contenido. */
   .cabecera {
     position: relative;
-    padding: var(--e-3) var(--e-4) var(--e-2);
-    align-items: stretch; flex-direction: column; flex-wrap: nowrap; gap: var(--e-2);
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center; gap: var(--e-1) var(--e-2);
+    padding: var(--e-2) var(--e-4) var(--e-3);
   }
-  .cabecera__titulo { font-size: 1.25rem; }
-  .cabecera__sub { margin-top: 0; }
-  .cabecera__izq, .cabecera__der { min-width: 0; }
-  .cabecera__der { justify-content: space-between; gap: var(--e-2); }
-  /* El selector de mes ocupa toda su fila; «Filtros» va arriba a la derecha, junto al título. */
-  .selector-mes { flex: 1 1 100%; min-width: 0; }
+  .cabecera__izq { min-width: 0; min-height: 44px; display: flex; align-items: center; }
+  .cabecera__titulo {
+    font-size: 1.4rem; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cabecera__sub { display: none; }
+
+  .cabecera__movil { display: flex; align-items: center; gap: var(--e-1); margin-right: -6px; }
+  .chip-hoy {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 36px; padding: 0 var(--e-3) 0 10px;
+    border: 1px solid var(--advertencia); border-radius: 999px;
+    background: var(--advertencia-suave); color: var(--advertencia);
+    font: inherit; font-size: .8rem; font-weight: 650; white-space: nowrap; cursor: pointer;
+  }
+  .chip-hoy .icono-linea { width: 16px; height: 16px; stroke-width: 2.2; }
+  /* Se ve de 36 px pero la zona táctil llega a 44 px. */
+  .chip-hoy { position: relative; }
+  .chip-hoy::after { content: ""; position: absolute; inset: -4px 0; }
+  .campana {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 50%; color: var(--texto-2);
+  }
+  .campana[aria-current="page"] { background: var(--primario-suave); color: var(--primario); }
+  .campana__globo {
+    position: absolute; top: 4px; right: 2px;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+    background: var(--error); color: #fff; font-size: .68rem; font-weight: 700;
+    border: 2px solid var(--bg);
+  }
+  :root[data-tema="oscuro"] .campana__globo { color: #2e1a19; }
+
+  .cabecera__der { grid-column: 1 / -1; min-width: 0; gap: var(--e-2); }
+  .selector-mes { order: 1; flex: 1 1 0; min-width: 0; }
   .selector-mes__valor { flex: 1; min-width: 0; min-height: 44px; }
+  /* Consultando un mes que no es el actual: el selector lo señala con el color de aviso. */
+  .selector-mes--otro { border-color: var(--advertencia); }
+  .selector-mes--otro .selector-mes__valor { color: var(--advertencia); }
   /* Los distintivos largos (p. ej. «Ahorraste $ … más en Septiembre 2026») se parten en vez de salirse. */
   .distintivo { white-space: normal; max-width: 100%; text-align: left; }
+  /* «Filtros» es un botón redondo solo con ícono (su nombre va en aria-label). */
   .cabecera__der .btn-filtros {
-    display: inline-flex; align-items: center; gap: var(--e-1);
-    position: absolute; top: var(--e-2); right: var(--e-4);
+    order: 2; position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 52px; height: 52px; min-height: 0; padding: 0; border-radius: 50%;
+    background: var(--superficie); border: 1px solid var(--borde); color: var(--texto-2);
   }
-  .cabecera--filtros .cabecera__izq { padding-right: 112px; }
+  .cabecera__der .btn-filtros[aria-expanded="true"] {
+    background: var(--primario-suave); border-color: var(--primario); color: var(--primario);
+  }
+  .btn-filtros__texto { display: none; }
+  .btn-filtros__n { position: absolute; top: -4px; right: -4px; margin: 0; }
   .cabecera__filtros { display: none; }
   .cabecera__filtros.abierto {
     display: flex; flex-direction: column; gap: var(--e-2);
@@ -839,19 +1086,11 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   .selector-medio__input { flex: 1; min-width: 0; }
   .btn--registrar { display: none; }
 
-  /* Espacio final para que el botón flotante y la barra inferior no tapen lo último. */
-  .contenido { padding: 0 var(--e-4) calc(132px + env(safe-area-inset-bottom, 0px)); }
+  /* Espacio final para que la barra de pestañas (y su «＋» elevado) no tape lo último. */
+  .contenido { padding: 0 var(--e-4) calc(104px + env(safe-area-inset-bottom, 0px)); }
 
-  /* Aviso «estás consultando otro mes»: una franja baja, no un bloque grande. */
-  .aviso-mes {
-    margin: 0 var(--e-4) var(--e-3); padding: 0 var(--e-3);
-    font-size: .84rem; flex-wrap: nowrap; justify-content: space-between; gap: var(--e-2);
-  }
-  .aviso-mes .enlace { white-space: nowrap; }
-
-  /* El botón flotante se esconde al bajar y reaparece al subir. */
-  .fab { transition: transform .2s ease, opacity .2s ease; }
-  .fab--oculto { transform: translateY(140px); opacity: 0; pointer-events: none; }
+  /* La franja «estás consultando otro mes» se sustituye por el botón «Mes actual». */
+  .aviso-mes { display: none; }
 
   /* Tablas apiladas: cada fila es una tarjeta y cada celda lleva su etiqueta. */
   .tabla--apilable, .tabla--apilable tbody, .tabla--apilable tr,
@@ -877,7 +1116,137 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   .tabla--apilable td:not([data-etiqueta])::before { content: none; }
 
   .tarjeta { padding: var(--e-4); border-radius: var(--radio); }
-  .rejilla--2, .rejilla--3, .rejilla--panel { grid-template-columns: 1fr; }
+  /* minmax(0, …): una cifra larga no puede ensanchar la columna más allá de la pantalla. */
+  .rejilla--2, .rejilla--3, .rejilla--panel { grid-template-columns: minmax(0, 1fr); }
+
+  .tarjeta-saldo { padding: var(--e-4); }
+  .tarjeta-saldo__item { min-height: 52px; padding: var(--e-2) var(--e-3); }
+  .tarjeta-saldo__icono { width: 28px; height: 28px; flex-basis: 28px; }
+  .tarjeta-saldo--compacta { grid-template-columns: 1fr; gap: var(--e-3); }
+  /* En la compacta, Ingresos y Gastos van lado a lado para no alargar la pantalla. */
+  .tarjeta-saldo--compacta .tarjeta-saldo__items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tarjeta-saldo--compacta .tarjeta-saldo__item { gap: var(--e-2); padding: var(--e-2) var(--e-3); min-height: 56px; }
+  /* Sin ícono: así la cifra completa cabe en media pantalla (nunca se recorta con «…»). */
+  .tarjeta-saldo--compacta .tarjeta-saldo__icono { display: none; }
+  .tarjeta-saldo--compacta .tarjeta-saldo__monto { font-size: 1rem; overflow: visible; }
+  .tarjeta-saldo--compacta .tarjeta-saldo__flecha { display: none; }
+  .tarjeta-saldo--compacta .tarjeta-saldo__item[aria-pressed="true"] .tarjeta-saldo__flecha { display: inline; }
+  .tarjeta-saldo__items { grid-template-columns: 1fr; gap: var(--e-2); margin-top: var(--e-4); }
+  .mosaicos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mosaico { padding: var(--e-3); }
+
+  /* ---- Inicio en el teléfono: una columna con separación uniforme ---- */
+  .inicio-movil { display: flex; flex-direction: column; gap: var(--e-5); }
+  .inicio-movil > *, .inicio-movil > .tarjeta, .inicio-movil > .tarjeta-saldo { margin-top: 0; margin-bottom: 0; }
+
+  /* Saldo: Ingresos y Gastos lado a lado. Cada uno es «ícono + nombre» arriba y la
+     cifra debajo, a todo el ancho, para que nunca se recorte. */
+  .tarjeta-saldo--fila .tarjeta-saldo__items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tarjeta-saldo--fila .tarjeta-saldo__item {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
+    gap: var(--e-1) var(--e-2); padding: 10px var(--e-3); min-height: 64px;
+  }
+  .tarjeta-saldo--fila .tarjeta-saldo__icono { width: 22px; height: 22px; flex-basis: 22px; font-size: .78rem; }
+  .tarjeta-saldo--fila .tarjeta-saldo__texto { display: contents; }
+  .tarjeta-saldo--fila .tarjeta-saldo__nombre { grid-row: 1; grid-column: 2; }
+  .tarjeta-saldo--fila .tarjeta-saldo__monto { grid-row: 2; grid-column: 1 / -1; font-size: 1.05rem; }
+  .tarjeta-saldo--fila .tarjeta-saldo__flecha { display: none; }
+
+  /* Meta sin definir: una fila baja (ícono · texto · botón) en vez de media pantalla. */
+  .meta--vacia { flex-direction: row; align-items: center; gap: var(--e-3); }
+  .meta--vacia .meta__icono { width: 40px; height: 40px; flex: 0 0 40px; font-size: 1.15rem; }
+  .meta__vacia-texto { flex: 1; min-width: 0; gap: 2px; }
+  .meta--vacia .btn { margin-top: 0; flex: 0 0 auto; }
+
+  /* Presupuesto del Inicio como carrusel: se desliza con el dedo y llega al borde de la pantalla. */
+  .mosaicos--carrusel {
+    display: flex; gap: var(--e-3);
+    margin: 0 calc(-1 * var(--e-4)); padding: 2px var(--e-4) var(--e-2);
+    overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: var(--e-4);
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .mosaicos--carrusel::-webkit-scrollbar { display: none; }
+  .mosaicos--carrusel > .mosaico { flex: 0 0 158px; min-width: 0; scroll-snap-align: start; }
+  .mosaico--mas {
+    align-items: flex-start; justify-content: center; gap: var(--e-1);
+    font: inherit; text-align: left; color: var(--texto); cursor: pointer;
+    background: var(--primario-suave); border-color: transparent;
+  }
+  .mosaico__enlace { margin-top: var(--e-2); font-size: .86rem; font-weight: 700; color: var(--primario); }
+
+  /* ---- Movimientos en el teléfono: chips de filtro y lista por día ---- */
+  .chips {
+    display: flex; gap: var(--e-2); align-items: center;
+    margin: var(--e-2) calc(-1 * var(--e-4)) 0; padding: 6px var(--e-4);
+    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    position: relative; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 38px; padding: 0 var(--e-4);
+    border: 1px solid var(--borde); border-radius: 999px;
+    background: var(--superficie); color: var(--texto-2);
+    font: inherit; font-size: .88rem; font-weight: 650; white-space: nowrap; cursor: pointer;
+  }
+  /* Zona táctil de 44 px sin engordar el chip. */
+  .chip::after { content: ""; position: absolute; inset: -4px 0; }
+  .chip[aria-pressed="true"] {
+    background: var(--primario); border-color: var(--primario); color: var(--sobre-primario);
+  }
+  .chip--icono { width: 38px; padding: 0; }
+  .chip--icono .icono-linea { width: 18px; height: 18px; }
+  .chip--icono[aria-expanded="true"]:not([aria-pressed="true"]) {
+    border-color: var(--primario); color: var(--primario); background: var(--primario-suave);
+  }
+  .chip--limpiar { border-style: dashed; }
+  .chip__flecha { font-size: .7rem; }
+  .buscar-movil { margin-top: var(--e-2); }
+  .buscar-movil input { width: 100%; }
+
+  .dias { display: flex; flex-direction: column; gap: var(--e-4); margin-top: var(--e-3); }
+  .dia__cabecera {
+    display: flex; align-items: baseline; justify-content: space-between; gap: var(--e-3);
+    padding: 0 var(--e-1) var(--e-2);
+  }
+  .dia__titulo { font-size: .86rem; font-weight: 700; color: var(--texto-2); }
+  .dia__titulo::first-letter { text-transform: uppercase; }
+  .dia__subtotal { font-size: .86rem; font-weight: 650; color: var(--texto-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dia__tarjeta { padding: var(--e-1) var(--e-4); }
+
+  /* Fila de movimiento: un solo botón que abre el detalle. */
+  .movimiento--boton {
+    width: 100%; min-height: 64px; background: none; border: 0; border-bottom: 1px solid var(--borde);
+    font: inherit; color: inherit; text-align: left; cursor: pointer;
+  }
+  .movimiento--boton:last-child { border-bottom: 0; }
+  .movimiento--boton .movimiento__cuerpo { display: flex; flex-direction: column; gap: 2px; }
+  .movimiento__sub {
+    font-size: .8rem; color: var(--texto-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .movimiento__marcas { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .movimiento__marcas .distintivo { font-size: .7rem; padding: 1px 6px; }
+
+  /* Hoja de detalle de un movimiento. */
+  .detalle__monto { font-size: 2rem; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .detalle__marcas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--e-2); }
+  .detalle__lista { margin: var(--e-4) 0; }
+  .detalle__fila {
+    display: flex; justify-content: space-between; gap: var(--e-4);
+    padding: var(--e-3) 0; border-bottom: 1px solid var(--borde);
+  }
+  .detalle__fila:last-child { border-bottom: 0; }
+  .detalle__fila dt { color: var(--texto-3); font-size: .9rem; flex: 0 0 auto; }
+  .detalle__fila dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+  .btn--peligro-suave { color: var(--error); }
+  .lista-acciones__texto { flex: 1; min-width: 0; }
+  .lista-acciones__marca { color: var(--primario); font-weight: 700; }
+  .lista-acciones__item[aria-pressed="true"] { background: var(--primario-suave); color: var(--primario); }
+  .lista-acciones__grupo {
+    margin: var(--e-3) 0 var(--e-1); padding: 0 var(--e-3);
+    font-size: .76rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--texto-3);
+  }
 
   .resumen { grid-template-columns: 1fr; gap: var(--e-3); }
   .resumen__item { display: flex; align-items: center; justify-content: space-between; gap: var(--e-3); }
@@ -886,38 +1255,58 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
   .fila-campos { grid-template-columns: 1fr; }
   .filtros .campo { min-width: 0; width: 100%; }
 
-  /* Navegación inferior */
+  /* Barra de pestañas: Inicio · Movimientos · ＋ · Presupuesto · Más. Respeta la zona
+     segura inferior del teléfono (barra de gestos). */
   .nav-inferior {
     display: block; position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
     background: var(--superficie); border-top: 1px solid var(--borde);
-    padding: 6px var(--e-2) calc(6px + env(safe-area-inset-bottom, 0px));
+    padding: 0 var(--e-2) env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -8px 24px rgba(23, 26, 60, .06);
   }
-  .nav-inferior ul { display: flex; }
-  .nav-inferior li { flex: 1; }
+  .nav-inferior ul {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 72px repeat(2, minmax(0, 1fr));
+    max-width: 520px; margin: 0 auto;
+  }
   .nav-inferior .nav-enlace {
-    flex-direction: column; gap: 2px; padding: 6px 2px;
-    font-size: .68rem; text-align: center; box-shadow: none; min-height: 48px;
-    border-radius: var(--radio-sm);
+    position: relative; width: 100%; min-height: 62px;
+    flex-direction: column; justify-content: center; gap: 2px; padding: 7px 0 6px;
+    border: 0; border-radius: var(--radio); background: transparent; box-shadow: none;
+    color: var(--texto-3); font: inherit; font-size: .72rem; font-weight: 600;
+    text-align: center; cursor: pointer;
   }
-  .nav-inferior .nav-enlace span { display: block !important; }
-  .nav-inferior .nav-enlace__icono { font-size: 1.2rem; width: auto; }
-  .nav-inferior .nav-enlace[aria-current="page"] { background: var(--primario-suave); }
-  .nav-inferior .nav-enlace__globo {
-    position: absolute; transform: translate(16px, -4px);
-    font-size: .65rem; min-width: 16px; height: 16px; padding: 0 4px;
-  }
-
-  /* Botón flotante de registro */
-  .fab {
+  .nav-inferior .nav-enlace:hover { background: transparent; }
+  .nav-inferior .nav-enlace__texto { display: block !important; }
+  .nav-inferior .nav-enlace__icono {
     display: flex; align-items: center; justify-content: center;
-    position: fixed; right: var(--e-4); bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    z-index: 70; width: 56px; height: 56px; border-radius: 50%;
-    background: var(--primario); color: var(--sobre-primario);
-    border: 0; font-size: 1.8rem; line-height: 1;
-    box-shadow: var(--sombra-alta); cursor: pointer;
+    width: 56px; height: 30px; border-radius: 999px;
+    transition: background-color .15s ease;
+  }
+  /* Pestaña activa: color de marca y píldora suave tras el ícono (no solo color: también peso). */
+  .nav-inferior .nav-enlace[aria-current] {
+    background: transparent; box-shadow: none; color: var(--primario); font-weight: 750;
+  }
+  .nav-inferior .nav-enlace[aria-current] .nav-enlace__icono { background: var(--primario-suave); }
+  .nav-inferior .nav-enlace[aria-current] .icono-linea { stroke-width: 2.1; }
+  .nav-inferior .nav-enlace__globo {
+    position: absolute; top: 4px; left: 50%; margin: 0 0 0 6px; transform: none;
+    font-size: .65rem; min-width: 18px; height: 18px; padding: 0 4px;
+    border: 2px solid var(--superficie);
   }
 
-  .toasts { bottom: calc(136px + env(safe-area-inset-bottom, 0px)); }
+  /* «＋» central: registrar movimiento. Sobresale de la barra para que sea el gesto principal. */
+  .nav-inferior__centro { display: flex; justify-content: center; align-items: flex-start; }
+  .nav-registrar {
+    display: flex; align-items: center; justify-content: center;
+    width: 60px; height: 60px; margin-top: -22px; padding: 0;
+    border: 4px solid var(--superficie); border-radius: 50%;
+    background: linear-gradient(135deg, var(--marca-a), var(--marca-b)); color: #fff;
+    box-shadow: var(--sombra-marca); cursor: pointer;
+    transition: transform .12s ease;
+  }
+  .nav-registrar:active { transform: scale(.93); }
+  .nav-registrar__icono .icono-linea { width: 26px; height: 26px; stroke-width: 2.4; }
+
+  .toasts { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
   /* Diálogos como hoja inferior: salen desde abajo, al alcance del pulgar, y se
      cierran arrastrando el asa hacia abajo o tocando fuera. */
@@ -940,6 +1329,22 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
     padding: var(--e-3) var(--e-4) calc(var(--e-4) + env(safe-area-inset-bottom, 0px));
   }
   .dialogo__pie .btn { flex: 1; }
+}
+
+/* Teléfonos muy angostos (iPhone SE, 320 px): «Mes actual» queda solo con su ícono
+   (el nombre va en aria-label) para que el título de la pantalla no se recorte. */
+@media (max-width: 359px) {
+  .chip-hoy { width: 36px; padding: 0; justify-content: center; }
+  .chip-hoy__texto { display: none; }
+  .chip-hoy::after { inset: -4px; }
+  /* «Septiembre de 2026» no cabe entre las dos flechas: se usa «Sep 2026». */
+  .mosaico__pct { font-size: 1.2rem; }
+  /* Media pantalla no alcanza para una cifra de millones: Ingresos y Gastos se apilan. */
+  .tarjeta-saldo--fila .tarjeta-saldo__items { grid-template-columns: minmax(0, 1fr); }
+  .tarjeta-saldo--fila .tarjeta-saldo__item { min-height: 56px; }
+  .meta--vacia .solo-movil.texto-sm { display: none; }
+  .selector-mes__largo { display: none; }
+  .selector-mes__corto { display: inline; }
 }
 
 /* Pantallas táctiles (teléfonos, tablets, también en horizontal): objetivos de al menos
@@ -974,7 +1379,7 @@ table.tabla tbody tr:last-child td { border-bottom: 0; }
 }
 
 @media print {
-  .sidebar, .nav-inferior, .fab, .cabecera__der, .toasts { display: none !important; }
+  .sidebar, .nav-inferior, .cabecera__movil, .cabecera__der, .toasts { display: none !important; }
   body { background: #fff; }
   .tarjeta { box-shadow: none; break-inside: avoid; }
 }

@@ -47,13 +47,42 @@ FP.vistas.inicio = (function () {
       return;
     }
 
-    cont.appendChild(tarjetaResumen(r, periodo, ctx));
+    /* Con un rango parcial, ingresos, gastos y ahorro son de esos días; la meta,
+       los topes y los avisos siguen siendo del mes completo. */
+    if (r.parcial) {
+      cont.appendChild(el('div', { class: 'aviso-medio', style: 'margin:0 0 var(--e-4)' },
+        '📅 Mostrando ' + U.rangoLegible(periodo, r.rango) + '. ' +
+        'La meta de ahorro, los topes y los avisos se calculan sobre el mes completo.'));
+    }
 
     const alertas = FP.dominio.alertas(periodo);
     /* El resto de avisos activos que no son de este mes (ver dominio.alertasTodas):
        sin esto, "Todo bajo control" podía sonar a que no hay nada pendiente en
        ningún lado, cuando en realidad solo se evaluó el mes que se está viendo. */
     const enOtrosMeses = Math.max(0, FP.dominio.contarAlertasTodas() - alertas.length);
+
+    /* Teléfono: una sola columna con su propio orden (saldo → gráfica → meta →
+       presupuesto → últimos movimientos → avisos). La campana de la cabecera ya
+       muestra cuántos avisos hay, por eso pueden ir al final. */
+    if (FP.app.esMovil()) {
+      cont.appendChild(el('div', { class: 'inicio-movil' }, [
+        tarjetaSaldo(r, periodo, ctx, 'tarjeta-saldo--fila'),
+        seccionGrafica(periodo, ctx),
+        ui.tarjetaMeta(r, periodo, ctx.refrescar),
+        seccionPresupuesto(periodo, ctx, true),
+        seccionRecientes(periodo, ctx, 5),
+        seccionPendientes(periodo, ctx),
+        seccionAlertas(alertas, periodo, ctx, enOtrosMeses),
+        ui.tarjetaMediosPago(periodo, { rango: ctx.rango })
+      ]));
+      return;
+    }
+
+    cont.appendChild(el('div', { class: 'rejilla rejilla--panel rejilla--estirar' }, [
+      tarjetaSaldo(r, periodo, ctx),
+      ui.tarjetaMeta(r, periodo, ctx.refrescar)
+    ]));
+
     cont.appendChild(seccionAlertas(alertas, periodo, ctx, enOtrosMeses));
 
     const rejilla = el('div', { class: 'rejilla rejilla--panel mt-5' }, [
@@ -71,77 +100,64 @@ FP.vistas.inicio = (function () {
 
   /* ------------------------------------------------- Resumen del mes -- */
 
-  function tarjetaResumen(r, periodo, ctx) {
-    const nodos = [];
-
-    /* Con un rango parcial, ingresos, gastos y ahorro son de esos días; la meta,
-       los topes y los avisos siguen siendo del mes completo. */
-    if (r.parcial) {
-      nodos.push(el('div', { class: 'aviso-medio', style: 'margin:0 0 var(--e-4)' },
-        '📅 Mostrando ' + U.rangoLegible(periodo, r.rango) + '. ' +
-        'La meta de ahorro, los topes y los avisos se calculan sobre el mes completo.'));
-    }
-
-    nodos.push(el('div', { class: 'resumen' }, [
-      item('Ingresos', '↑', FP.dinero.formato(r.ingresos), 'ingreso',
-        r.nMovimientos ? null : (r.parcial ? 'Sin movimientos en esos días' : 'Sin movimientos aún')),
-      item('Gastos', '↓', FP.dinero.formato(r.gastos), 'gasto', null),
-      item('Ahorro real', '=', FP.dinero.formatoSaldo(r.ahorroReal),
-        null, r.parcial ? 'Ingresos − gastos de esos días' : 'Ingresos − gastos')
-    ]));
-
-    if (r.hayMeta) {
-      const pct = U.clamp(r.porcentajeMeta, 0, 100);
-      const severidad = r.cumpleMeta ? 'exito' : (r.ahorroReal < 0 ? 'error' : 'advertencia');
-
-      nodos.push(el('div', { class: 'meta' }, [
-        el('div', { class: 'meta__fila' }, [
-          el('h3', null, 'Meta de ahorro'),
-          el('span', { class: 'meta__cifra' }, FP.dinero.formato(r.metaAhorro))
-        ]),
-        ui.barraProgreso(pct, severidad,
-          'Avance de la meta de ahorro: ' + U.formatoPorcentaje(r.porcentajeMeta, 0)),
-        el('div', { class: 'meta__fila' }, [
-          el('span', { class: 'texto-sm texto-apagado num' },
-            (r.parcial ? 'Cumplimiento del mes completo: ' : 'Cumplimiento: ') +
-            FP.dinero.formatoSaldo(r.ahorroMes) + ' de ' + FP.dinero.formato(r.metaAhorro)),
-          ui.distintivo(
-            r.cumpleMeta ? 'Meta cumplida' : 'Meta pendiente',
-            r.cumpleMeta ? 'exito' : 'advertencia',
-            r.cumpleMeta ? '✓' : '⏳'
-          )
-        ]),
-        el('p', { class: 'meta__mensaje', style: 'color:var(--' + severidad + ')' },
-          r.cumpleMeta
-            ? 'Vas ' + FP.dinero.formato(r.diferenciaMeta) + ' por encima de tu meta.'
-            : 'Te faltan ' + FP.dinero.formato(Math.abs(r.diferenciaMeta)) + ' para cumplir la meta.')
-      ]));
-    } else {
-      nodos.push(el('div', { class: 'meta fila fila--entre' }, [
-        el('div', null, [
-          el('h3', null, 'Sin meta de ahorro'),
-          el('p', { class: 'texto-sm texto-apagado mt-3' },
-            'Define cuánto quieres que te quede este mes para medir tu avance.')
-        ]),
-        el('button', {
-          type: 'button', class: 'btn',
-          onclick: function () { FP.formularios.metaAhorro({ periodo: periodo, alGuardar: ctx.refrescar }); }
-        }, 'Definir meta')
-      ]));
-    }
-
-    return el('section', { class: 'tarjeta', 'aria-label': 'Resumen de ' + U.periodoLegible(periodo) }, nodos);
+  /** Tarjeta principal: ahorro real grande; ingresos y gastos llevan a sus movimientos. */
+  function tarjetaSaldo(r, periodo, ctx, clase) {
+    return ui.tarjetaSaldo({
+      clase: clase,
+      ariaLabel: 'Resumen de ' + U.periodoLegible(periodo),
+      etiqueta: 'Ahorro real · ' + U.rangoLegible(periodo, r.rango),
+      cifra: FP.dinero.formatoSaldo(r.ahorroReal),
+      pie: !r.nMovimientos
+        ? (r.parcial ? 'Sin movimientos en esos días' : 'Sin movimientos aún')
+        : (r.parcial ? 'Ingresos − gastos de esos días' : 'Ingresos − gastos'),
+      items: [
+        { etiqueta: 'Ingresos', icono: '↑', monto: r.ingresos, accion: 'Ver movimientos',
+          alHacerClic: function () { ctx.irA('movimientos', { tipo: 'ingreso' }); } },
+        { etiqueta: 'Gastos', icono: '↓', monto: r.gastos, accion: 'Ver movimientos',
+          alHacerClic: function () { ctx.irA('movimientos', { tipo: 'gasto' }); } }
+      ]
+    });
   }
 
-  function item(etiqueta, icono, cifra, variante, pie) {
-    return el('div', { class: 'resumen__item' + (variante ? ' resumen__item--' + variante : '') }, [
-      el('div', null, [
-        el('span', { class: 'resumen__etiqueta' }, [
-          el('span', { 'aria-hidden': 'true' }, icono), etiqueta
+  /* ---------------------------------- Gráfica de balance (solo móvil) -- */
+
+  const MESES_GRAFICA = 6;
+
+  /**
+   * Ingresos y gastos de los últimos 6 meses, con el mes consultado resaltado.
+   * Tocar un mes lo abre. Usa la misma serie probada del Histórico.
+   */
+  function seccionGrafica(periodo, ctx) {
+    const fin = FP.dominio.finDeVentana(periodo, MESES_GRAFICA);
+    const serie = FP.dominio.serieMensual(MESES_GRAFICA, ctx.rango, fin);
+    const periodos = serie.map(function (s) { return s.periodo; });
+    const ventana = serie.length === 1 ? 'Un mes con datos' : 'Últimos ' + serie.length + ' meses';
+
+    return el('section', { class: 'tarjeta', 'aria-label': 'Ingresos y gastos por mes' }, [
+      el('div', { class: 'seccion__cabecera' }, [
+        el('div', null, [
+          el('h2', { class: 'seccion__titulo' }, 'Ingresos y gastos'),
+          el('p', { class: 'texto-sm texto-apagado' },
+            ventana + (ctx.rango ? ' · ' + U.rangoLegible(periodo, ctx.rango, true) + ' de cada mes' : ''))
         ]),
-        el('div', { class: 'resumen__cifra' }, cifra),
-        pie ? el('div', { class: 'resumen__pie' }, pie) : null
-      ])
+        el('button', {
+          type: 'button', class: 'btn btn--sm',
+          onclick: function () { ctx.irA('historico'); }
+        }, 'Histórico')
+      ]),
+      FP.graficos.columnas({
+        /* Lienzo del ancho real de la tarjeta: así el texto de los ejes no se encoge. */
+        ancho: Math.max(240, Math.min(window.innerWidth, 720) - 66), alto: 190,
+        etiquetas: periodos.map(function (p) { return U.periodoLegible(p, true).split(' ')[0]; }),
+        titulos: periodos.map(function (p) { return U.periodoLegible(p); }),
+        series: [
+          { nombre: 'Ingresos', color: 'var(--ingreso)', valores: serie.map(function (s) { return s.ingresos; }) },
+          { nombre: 'Gastos', color: 'var(--gasto)', valores: serie.map(function (s) { return s.gastos; }) }
+        ],
+        resaltar: periodos.indexOf(periodo),
+        alElegir: function (i) { ctx.cambiarPeriodo(periodos[i]); },
+        descripcion: 'Ingresos y gastos por mes. Toca un mes para abrirlo.'
+      })
     ]);
   }
 
@@ -216,7 +232,8 @@ FP.vistas.inicio = (function () {
 
   /* ---------------------------------------------------- Presupuesto --- */
 
-  function seccionPresupuesto(periodo, ctx) {
+  /** Con `carrusel` (móvil) los mosaicos van en una fila que se desliza con el dedo. */
+  function seccionPresupuesto(periodo, ctx, carrusel) {
     const filas = FP.dominio.estadoTopes(periodo);
     const seccion = el('section', { class: 'seccion', 'aria-label': 'Presupuesto del mes' }, [
       ui.cabeceraSeccion('Presupuesto', [
@@ -227,7 +244,7 @@ FP.vistas.inicio = (function () {
       ])
     ]);
 
-    const tarjeta = el('div', { class: 'tarjeta' });
+    const tarjeta = el('div', { class: filas.length ? '' : 'tarjeta' });
 
     if (!filas.length) {
       tarjeta.appendChild(ui.vacio({
@@ -240,8 +257,12 @@ FP.vistas.inicio = (function () {
         }
       }));
     } else {
+      const mosaicos = el('div', carrusel
+        ? { class: 'mosaicos mosaicos--carrusel', role: 'group', 'aria-label': 'Categorías del presupuesto. Desliza para ver más', tabindex: 0 }
+        : { class: 'mosaicos' });
+      tarjeta.appendChild(mosaicos);
       filas.slice(0, 6).forEach(function (fila) {
-        tarjeta.appendChild(ui.filaTope(fila, {
+        mosaicos.appendChild(ui.mosaicoTope(fila, {
           acciones: function (f) {
             return ui.menuAcciones([
               {
@@ -259,7 +280,17 @@ FP.vistas.inicio = (function () {
         }));
       });
 
-      if (filas.length > 6) {
+      if (filas.length > 6 && carrusel) {
+        /* Último mosaico del carrusel: lleva al resto de categorías. */
+        mosaicos.appendChild(el('button', {
+          type: 'button', class: 'mosaico mosaico--mas',
+          onclick: function () { ctx.irA('presupuesto'); }
+        }, [
+          el('span', { class: 'mosaico__pct num' }, '+' + (filas.length - 6)),
+          el('span', { class: 'mosaico__nombre' }, 'categorías más'),
+          el('span', { class: 'mosaico__enlace' }, 'Ver todas ›')
+        ]));
+      } else if (filas.length > 6) {
         tarjeta.appendChild(el('p', { class: 'texto-sm texto-apagado mt-4' },
           'Y ' + (filas.length - 6) + ' categoría(s) más en la pantalla de Presupuesto.'));
       }
@@ -271,11 +302,11 @@ FP.vistas.inicio = (function () {
 
   /* --------------------------------------------- Movimientos recientes */
 
-  function seccionRecientes(periodo, ctx) {
-    const movs = FP.dominio.ordenarRecientes(FP.dominio.movimientosDe(periodo, ctx.rango)).slice(0, 6);
+  function seccionRecientes(periodo, ctx, cuantos) {
+    const movs = FP.dominio.ordenarRecientes(FP.dominio.movimientosDe(periodo, ctx.rango)).slice(0, cuantos || 6);
 
     const seccion = el('section', { class: 'seccion', 'aria-label': 'Movimientos recientes' }, [
-      ui.cabeceraSeccion('Movimientos recientes', [
+      ui.cabeceraSeccion(cuantos ? 'Últimos movimientos' : 'Movimientos recientes', [
         el('button', {
           type: 'button', class: 'btn btn--sm',
           onclick: function () { ctx.irA('movimientos'); }

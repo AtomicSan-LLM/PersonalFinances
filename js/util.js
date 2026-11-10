@@ -167,6 +167,28 @@ FP.util = (function () {
     return Number(m[3]) + ' de ' + MESES[Number(m[2]) - 1] + ' de ' + m[1];
   }
 
+  const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
+  /**
+   * Nombre de un día para encabezar una lista: «Hoy», «Ayer», «Mañana» o
+   * «lun 14 sep» (con año si no es el de hoy). `hoy` (ISO) es opcional.
+   */
+  function diaRelativo(fechaISO, hoy) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fechaISO || ''));
+    if (!m) return String(fechaISO || '');
+    const ref = hoy || hoyISO();
+    const h = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ref);
+    const fecha = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (h) {
+      const base = new Date(Number(h[1]), Number(h[2]) - 1, Number(h[3]));
+      const dias = Math.round((fecha - base) / 86400000);
+      if (dias === 0) return 'Hoy';
+      if (dias === -1) return 'Ayer';
+      if (dias === 1) return 'Mañana';
+    }
+    return DIAS_CORTOS[fecha.getDay()] + ' ' + fechaCorta(fechaISO, !h || h[1] !== m[1]);
+  }
+
   function esFechaValida(fechaISO) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fechaISO || ''));
     if (!m) return false;
@@ -253,7 +275,7 @@ FP.util = (function () {
     periodoDe: periodoDe, periodoActual: periodoActual, periodoLegible: periodoLegible, rangoLegible: rangoLegible,
     partesPeriodo: partesPeriodo, sumarMeses: sumarMeses, diffMeses: diffMeses,
     diasEnMes: diasEnMes, fechaEnPeriodo: fechaEnPeriodo,
-    fechaCorta: fechaCorta, fechaLarga: fechaLarga, esFechaValida: esFechaValida,
+    fechaCorta: fechaCorta, fechaLarga: fechaLarga, diaRelativo: diaRelativo, esFechaValida: esFechaValida,
     clamp: clamp, elegirDistinto: elegirDistinto, redondear: redondear, normalizar: normalizar,
     ordenarPor: ordenarPor, agrupar: agrupar, suma: suma,
     variacion: variacion, formatoPorcentaje: formatoPorcentaje

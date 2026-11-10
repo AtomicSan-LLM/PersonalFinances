@@ -59,6 +59,7 @@ FP.vistas.comparar = (function () {
         m.icono + ' Filtrando los gastos por medio de pago: ' + m.etiqueta +
         '. Ingresos, ahorro real y meta siguen considerando todos los medios de pago.'));
     }
+    cont.appendChild(tarjetaResultado(datos));
     cont.appendChild(tarjetaIndicadores(datos));
     cont.appendChild(tarjetaMedios(datos));
     cont.appendChild(tarjetaCategorias(datos));
@@ -103,6 +104,33 @@ FP.vistas.comparar = (function () {
     ]);
   }
 
+  /* --------------------------------------------------- Resultado ------ */
+
+  function conSigno(n) { return (n > 0 ? '+' : '') + FP.dinero.formatoSaldo(n); }
+
+  /** Diferencia de ahorro (mes a comparar − mes base) con las de ingresos y gastos. */
+  function tarjetaResultado(datos) {
+    const ind = function (clave) { return datos.indicadores.find(function (i) { return i.clave === clave; }); };
+    const ahorro = ind('ahorro');
+    const veredicto = ahorro.delta > 0
+      ? 'Ahorraste ' + FP.dinero.formato(ahorro.delta) + ' más en ' + U.periodoLegible(datos.b.periodo) + '.'
+      : (ahorro.delta < 0
+        ? 'Ahorraste ' + FP.dinero.formato(Math.abs(ahorro.delta)) + ' menos en ' + U.periodoLegible(datos.b.periodo) + '.'
+        : 'Ahorraste exactamente lo mismo en los dos meses.');
+
+    return ui.tarjetaSaldo({
+      compacta: true,
+      ariaLabel: 'Resultado de la comparación',
+      etiqueta: 'Cambio en el ahorro · ' + U.periodoLegible(datos.b.periodo, true) + ' vs ' + U.periodoLegible(datos.a.periodo, true),
+      cifra: conSigno(ahorro.delta),
+      pie: veredicto,
+      items: [
+        { etiqueta: 'Cambio en ingresos', icono: '↑', cifra: conSigno(ind('ingresos').delta) },
+        { etiqueta: 'Cambio en gastos', icono: '↓', cifra: conSigno(ind('gastos').delta) }
+      ]
+    });
+  }
+
   /* ------------------------------------------------- Indicadores ------ */
 
   function tarjetaIndicadores(datos) {
@@ -119,20 +147,13 @@ FP.vistas.comparar = (function () {
 
     cuerpo.appendChild(el('tr', null, [
       el('th', { scope: 'row' }, datos.cumplimiento.etiqueta),
-      el('td', null, marcaMeta(datos.cumplimiento.a, datos.cumplimiento.aOk)),
-      el('td', null, marcaMeta(datos.cumplimiento.b, datos.cumplimiento.bOk)),
-      el('td', null, el('span', { class: 'texto-apagado' }, '—'))
+      el('td', { class: 'num' }, marcaMeta(datos.cumplimiento.a, datos.cumplimiento.aOk)),
+      el('td', { class: 'num' }, marcaMeta(datos.cumplimiento.b, datos.cumplimiento.bOk)),
+      el('td', { class: 'num' }, el('span', { class: 'texto-apagado' }, '—'))
     ]));
 
-    const ahorro = datos.indicadores.find(function (i) { return i.clave === 'ahorro'; });
-    const veredicto = ahorro.delta > 0
-      ? { texto: 'Ahorraste ' + FP.dinero.formato(ahorro.delta) + ' más en ' + U.periodoLegible(datos.b.periodo) + '.', sev: 'exito' }
-      : (ahorro.delta < 0
-        ? { texto: 'Ahorraste ' + FP.dinero.formato(Math.abs(ahorro.delta)) + ' menos en ' + U.periodoLegible(datos.b.periodo) + '.', sev: 'advertencia' }
-        : { texto: 'Ahorraste exactamente lo mismo en los dos meses.', sev: 'neutro' });
-
     return el('section', { class: 'tarjeta mt-4' }, [
-      ui.cabeceraSeccion('Indicadores', [ui.distintivo(veredicto.texto, veredicto.sev)]),
+      ui.cabeceraSeccion('Indicadores'),
       el('div', { class: 'tabla-contenedor' }, [
         ui.apilarTabla(el('table', { class: 'tabla' }, [
           el('thead', null, [
@@ -236,9 +257,10 @@ FP.vistas.comparar = (function () {
         : (c.tendencia === 'peor' ? 'var(--error)' : 'var(--texto-2)');
 
       cuerpo.appendChild(el('tr', null, [
-        el('th', { scope: 'row' }, [
-          c.icono ? el('span', { 'aria-hidden': 'true' }, c.icono + ' ') : null, c.nombre
-        ]),
+        el('th', { scope: 'row' }, el('span', { class: 'tabla__categoria' }, [
+          el('span', { class: 'movimiento__marca movimiento__marca--gasto', 'aria-hidden': 'true' }, c.icono || '📦'),
+          c.nombre
+        ])),
         el('td', { class: 'num nowrap' }, FP.dinero.formato(c.a)),
         el('td', { class: 'num nowrap' }, FP.dinero.formato(c.b)),
         el('td', { class: 'num nowrap', style: 'color:' + color + ';font-weight:650' }, [
