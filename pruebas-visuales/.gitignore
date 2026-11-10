@@ -1,0 +1,6 @@
+node_modules/
+capturas/
+# Copias con datos reales: nunca al repositorio
+*.json
+!package.json
+!package-lock.json
