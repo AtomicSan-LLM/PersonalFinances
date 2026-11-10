@@ -816,7 +816,8 @@ FP.ui = (function () {
     const op = opciones || {};
     const input = el('input', {
       type: 'text',
-      inputmode: 'decimal',
+      /* Teclado numérico en el teléfono; con decimales solo si la moneda los usa. */
+      inputmode: ((FP.store.state.config || {}).decimales > 0) ? 'decimal' : 'numeric',
       autocomplete: 'off',
       value: (op.valor !== undefined && op.valor !== null && op.valor !== '') ? FP.dinero.paraCampo(op.valor) : '',
       placeholder: op.placeholder || '0',
@@ -828,7 +829,28 @@ FP.ui = (function () {
       input.value = isFinite(n) ? FP.dinero.paraCampo(n) : '';
       if (op.alCambiar) op.alCambiar(isFinite(n) ? n : NaN);
     });
-    input.addEventListener('input', function () {
+    /* Mientras se escribe: solo números, con los separadores de miles puestos al vuelo.
+       El cursor se queda tras el mismo dígito aunque aparezca o desaparezca un separador. */
+    input.addEventListener('input', function (ev) {
+      if (ev.isComposing) return;
+      const sep = FP.dinero.separadorDecimal();
+      const utiles = function (t) {
+        return t.split('').filter(function (ch) { return /\d/.test(ch) || ch === sep; }).length;
+      };
+      const crudo = input.value;
+      const cursor = input.selectionStart === null ? crudo.length : input.selectionStart;
+      const antes = utiles(FP.dinero.mientrasEscribe(crudo.slice(0, cursor)));
+      const nuevo = FP.dinero.mientrasEscribe(crudo);
+
+      if (nuevo !== crudo) {
+        input.value = nuevo;
+        let pos = 0, vistos = 0;
+        while (pos < nuevo.length && vistos < antes) {
+          if (/\d/.test(nuevo[pos]) || nuevo[pos] === sep) vistos++;
+          pos++;
+        }
+        try { input.setSelectionRange(pos, pos); } catch (e) { /* sin selección */ }
+      }
       if (op.alEscribir) op.alEscribir(FP.dinero.leer(input.value));
     });
 

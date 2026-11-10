@@ -129,6 +129,51 @@
     cierto(isNaN(FP.dinero.leer('abc')), 'un texto sin dígitos debe dar NaN');
   });
 
+  prueba('Monto mientras se escribe: pone los puntos de miles y descarta todo lo que no sea número', function () {
+    limpiar();
+    const f = FP.dinero.mientrasEscribe;
+    igual(f('1'), '1');
+    igual(f('125'), '125');
+    igual(f('1250'), '1.250');
+    igual(f('1250000'), '1.250.000', 'millones');
+    igual(f('1250000000'), '1.250.000.000', 'miles de millones');
+    igual(f('1.2500'), '12.500', 'reagrupa al añadir un dígito');
+    igual(f('1.25'), '125', 'reagrupa al borrar un dígito');
+    igual(f('12a5'), '125', 'letras');
+    igual(f('-500'), '500', 'signo menos');
+    igual(f('$ 4.500+*/#e'), '4.500', 'símbolos');
+    igual(f('1250,5'), '12.505', 'COP no usa decimales: la coma no se acepta');
+    igual(f('007'), '7', 'ceros a la izquierda');
+    igual(f('0'), '0');
+    igual(f(''), '');
+    igual(f('abc'), '', 'sin dígitos queda vacío');
+    igual(f('1234567890123456'), '123.456.789.012', 'máximo 12 dígitos');
+    ['1', '1250', '1250000', '987654321'].forEach(function (t) {
+      igual(FP.dinero.leer(f(t)), Number(t), 'leer(mientrasEscribe(' + t + '))');
+    });
+  });
+
+  prueba('Monto mientras se escribe: con moneda de decimales admite un solo separador decimal', function () {
+    limpiar();
+    S.state.config.decimales = 2;
+    FP.dinero.limpiarCache();
+    try {
+      const f = FP.dinero.mientrasEscribe;
+      igual(f('1250,5'), '1.250,5');
+      igual(f('1250,'), '1.250,', 'la coma recién escrita se conserva');
+      igual(f('1250,567'), '1.250,56', 'máximo 2 decimales');
+      igual(f('1,2,5'), '1,25', 'una sola coma');
+      igual(f(',5'), '0,5');
+      igual(f('1.250'), '1.250', 'el punto sigue siendo de miles');
+      igual(FP.dinero.leer(f('1250,5')), 1250.5);
+      igual(FP.dinero.leer(f('1250,56')), 1250.56);
+      igual(FP.dinero.leer(f('1250,')), 1250);
+    } finally {
+      S.state.config.decimales = 0;
+      FP.dinero.limpiarCache();
+    }
+  });
+
   prueba('El formato monetario respeta la configuración de moneda', function () {
     limpiar();
     const texto = FP.dinero.formato(1250000);
